@@ -53,7 +53,7 @@ pre-exec-timing() {
     in_timing="yes"
 }
 timing(){
-    local command_to_execute="$(history 1 | sed 's/^ *[0-9]\+ *//')"
+	local command_to_execute="$(history 1 | sed 's/^ *[0-9]\+ *//')"
     local end_time=$(date +%s%N)
     local elapsed_time_ns=$((end_time - start_time))
         local elapsed_time_sec=$(echo "scale=2; $elapsed_time_ns / 1000000000" | bc)
@@ -62,10 +62,16 @@ timing(){
         else
                 echo -e "\033[1;31m"
         fi
-        echo -e "$command_to_execute: ${elapsed_time_sec} s\033[m"
-    start_time=''
-    in_timing=''
+	if [ $post_histsize -eq $pre_histsize ];then
+		command_to_execute=''
+	fi
+	echo -e "$command_to_execute: ${elapsed_time_sec} s\033[m"
+    unset start_time
+    unset in_timing
+    post_histsize=$pre_histsize
+    unset pre_histsize
 }
+post_histsize=0
 trap '[ "$in_timing"x == yesx ]||pre-exec-timing' DEBUG
 bashinit(){
 ret=$?
@@ -73,6 +79,8 @@ time1=$(date +%T|awk -F":" {'print $1":"$2'})
 time2=$(date +%T|awk -F":" {'print $3'})
 PATH="$(pwd):$SourcePATH"
 if [ $in_init == 0 ];then
+	history -a
+	pre_histsize=$(stat -c%s ~/.bash_history)
         timing
 fi
 in_init=0
