@@ -3,9 +3,11 @@
 ### BASHRC CONFIGS ###
 color_prompt=yes #yes/no
 export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01' #GCC Colors
-shopt -s autocd cdspell histverify xpg_echo histappend checkwinsize
-RAMFS_DIR="/tmp/bashrcFuncDatas"
+shopt -s autocd cdspell histverify xpg_echo histappend checkwinsize  ## bash acts
+RAMFS_DIR="/tmp/bashrcFuncDatas" ### path to save bashrc datas
 SYSTEM_FETCH="fastfetch --color blue --logo-color-1 blue --logo-color-2 blue"
+HISTFILE="$HOME/.bash_history" ## bash history file
+
 ### END CONFIGS ###
 ### README ###
 # This script is only for bash,and it cannot be executed via almost any other shells.
@@ -45,15 +47,16 @@ complete -F _comp_command sudo
 complete -F _comp_command _
 complete -E -F _comp_complete_longopt
 # Command timing
-pre-exec-timing() {
-    if [ $in_init == 1 ];then
+timing(){
+        local args=$1
+        if [ "$args" == pre ];then
+if [ $in_init == 1 ];then
             return
     fi
     start_time=$(date +%s%N)
     in_timing="yes"
-}
-timing(){
-	local command_to_execute="$(history 1 | sed 's/^ *[0-9]\+ *//')"
+elif [ "$args" == post ];then
+        local command_to_execute="$(history 1 | sed 's/^ *[0-9]\+ *//')"
     local end_time=$(date +%s%N)
     local elapsed_time_ns=$((end_time - start_time))
         local elapsed_time_sec=$(echo "scale=2; $elapsed_time_ns / 1000000000" | bc)
@@ -62,38 +65,55 @@ timing(){
         else
                 echo -e "\033[1;31m"
         fi
-	if [ $post_histsize -eq $pre_histsize ];then
-		command_to_execute=''
-	fi
-	echo -e "$command_to_execute: ${elapsed_time_sec} s\033[m"
+        if [ $post_histsize -eq $pre_histsize ] && [ $deldups_exec -ne 1 ];then
+                command_to_execute=''
+        fi
+        echo -e "$command_to_execute: ${elapsed_time_sec} s\033[m"
     unset start_time
     unset in_timing
     post_histsize=$pre_histsize
     unset pre_histsize
+        fi
 }
-post_histsize=0
-trap '[ "$in_timing"x == yesx ]||pre-exec-timing' DEBUG
-bashinit(){
+deldups(){
+        local first_cmd=$(tail -n 1 $HISTFILE)
+        local sec_cmd=$(tail -n 2 $HISTFILE|sed '$d')
+        if [ "$first_cmd"x == "$sec_cmd"x ];then
+                sed -i '$d' $HISTFILE
+                deldups_exec=1
+        else
+                deldups_exec=0
+        fi
+        history -r
+}
+history -a
+pre_histsize=$(stat -c%s $HISTFILE)
+post_histsize=$pre_histsize
+pre_exec(){
+        [ "$in_timing"x == yesx ]||timing pre
+}
+post_exec(){
 ret=$?
 time1=$(date +%T|awk -F":" {'print $1":"$2'})
 time2=$(date +%T|awk -F":" {'print $3'})
 PATH="$(pwd):$SourcePATH"
+history -a
+deldups
 if [ $in_init == 0 ];then
-	history -a
-	pre_histsize=$(stat -c%s ~/.bash_history)
-        timing
+        pre_histsize=$(stat -c%s $HISTFILE)
+        timing post
 fi
 in_init=0
 }
-HISTCONTROL=ignoreboth
+trap 'pre_exec' DEBUG
+HISTCONTROL=ignorespace
 HISTSIZE=100000
 HISTFILESIZE=200000
 # make less more friendly for non-text input files, see lesspipe(1)
 [ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
-PROMPT_COMMAND=bashinit
+PROMPT_COMMAND=post_exec
 command_not_found_handle(){
         cmdnotfound $1
-
 }
 ### You can modify there for other distributions ###
 cmdnotfound(){
