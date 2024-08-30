@@ -7,7 +7,6 @@ shopt -s autocd cdspell histverify xpg_echo histappend checkwinsize  ## bash act
 RAMFS_DIR="/tmp/bashrcFuncDatas" ### path to save bashrc datas
 SYSTEM_FETCH="fastfetch --color blue --logo-color-1 blue --logo-color-2 blue"
 HISTFILE="$HOME/.bash_history" ## bash history file
-
 ### END CONFIGS ###
 ### README ###
 # This script is only for bash,and it cannot be executed via almost any other shells.
@@ -25,6 +24,7 @@ if [ -x /usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
         echo "Its the first time to start bash since boot,checking dependencies..."
         if pacman -Qq $bashrc_deps > /dev/null 2>&1;then
                 touch $RAMFS_DIR/complete_dependency
+                clear
         elif [ -x /usr/bin/pacman ];then
                 echo "These packages are needed.To make sure the bashrc will be executed successfully,you have to install them."
                 sudo pacman -Sy $bashrc_deps --neede --overwrite '*'
@@ -130,14 +130,14 @@ fi
 }
 ### Done ###
 PS1='\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&tput blink&&echo -n ':'&&tput sgr0&&echo -n $time2 $([ $UID = 0 ]&&tput smul&&tput blink&&echo -n \[\033[1\;31m\]$(whoami)&&tput sgr0||echo \[\033[1\;34m\]$(whoami)))\[\033[1;31m\]@\[\033[34m\]\h \[\033[33m\]\w\[\033[31m\]]\[\033[m\]\n└─$([ $ret = 0 ]&&echo \[\033[1\;32m\]||echo \[\033[1\;31m\]$ret)\$>>_\[\e[m\] '
-    PS2='[$0 \t \u \w]>'
-    PS3='\[[$0]Select |--'
-    PS4='\[[$0] $LINENO:>__ '
+PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>'
+PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > '
+PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> '
 if [ $color_prompt = no ];then 
-    PS1='|-[$0-$$ \t \u@\h \w]\$\n\-$([ $ret == 0 ]||echo \ $ret)>>_ '
-    PS2='[$0 \t \u \w]>'
-    PS3='\[[$0]Select |--'
-    PS4='\[[0] $LINENO:>__ '
+    PS1='┌─[$0-$$ $(echo -n "$time1:$time2") $(whoami)@\h \w]\[\033[m\]\n└─$([ $ret = 0 ]||echo -n $ret)\$>>_\[\e[m\] '
+    PS2='[Line $LINENO]> '
+    PS3='\[[$0]Select > '
+    PS4='\[[$0] Line $LINENO:> '
 fi
 unset color_prompt
 if [ -x /usr/bin/dircolors ]; then
@@ -215,7 +215,6 @@ lspath() {
         echo "No paths saved"
         return 1
     fi
-
     cat "$SAVE_FILE"
 }
 fm() {
