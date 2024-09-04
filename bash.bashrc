@@ -105,6 +105,48 @@ if [ $in_init == 0 ];then
 fi
 in_init=0
 }
+tmuxmgr() {
+  sessions=$(tmux list-sessions -F "#S" 2>/dev/null)
+  if [ -z $sessions ];then
+  tmux new-session -s bash
+  return
+  else
+  echo "\033[1;32m$(tmux ls)\033[m"
+  fi
+  echo "Choose attach, new, quit(also exit): "
+  read -e mode
+  if [ -z $mode ];then
+  echo no choice,exiting
+  return 1
+  fi
+  mode=$(compgen -W "attach new quit exit" -- "$mode")
+  if [ "$mode"x == "attach"x ]; then
+    read -e -p "Session name (or Enter to attach to last session: " session_name
+    session_name=$(compgen -W "$sessions" -- "$session_name")
+    if [ -z "$session_name" ]; then
+      tmux attach-session
+    elif [[ "$sessions" == *"$session_name"* ]]; then
+      tmux attach-session -t "$session_name"
+    else
+      echo "Can't find the session name."
+      tmuxmgr
+    fi
+  elif [ "$mode"x == "new"x ]; then
+    read -p "Session name: " new_session
+    tmux new-session -d -s "$new_session"
+    tmux attach-session -t "$new_session"
+  elif [ "$mode"x == "quit"x ]; then
+    echo "canceled."
+    return 1
+  elif [ "$mode"x == "exit"x ];then
+  echo "canceled."
+  return 1
+  else
+    echo "No such mode."
+    tmuxmgr
+  fi
+}
+bind -x '"\C-t": tmuxmgr'
 trap 'pre_exec' DEBUG
 HISTCONTROL=ignorespace
 HISTSIZE=100000
