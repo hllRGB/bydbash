@@ -106,6 +106,9 @@ fi
 in_init=0
 }
 tmuxmgr() {
+if [ -n $TMUX ];then
+echo "You have already attached a tmux session!"
+fi
   sessions=$(tmux list-sessions -F "#S" 2>/dev/null)
   if [ -z $sessions ];then
   tmux new-session -s bash
