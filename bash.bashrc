@@ -108,11 +108,12 @@ in_init=0
 tmuxmgr() {
 if [ -n $TMUX ];then
 echo "You have already attached a tmux session!"
+return 0
 fi
   sessions=$(tmux list-sessions -F "#S" 2>/dev/null)
   if [ -z $sessions ];then
   tmux new-session -s bash
-  return
+  return 0
   else
   echo "\033[1;32m$(tmux ls)\033[m"
   fi
