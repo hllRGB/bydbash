@@ -106,7 +106,7 @@ fi
 in_init=0
 }
 tmuxmgr() {
-if [ -n $TMUX ];then
+if [ ! -z $TMUX ];then
 echo "You have already attached a tmux session!"
 return 0
 fi
