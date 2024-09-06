@@ -117,8 +117,8 @@ fi
   else
   echo "\033[1;32m$(tmux ls)\033[m"
   fi
-  echo "Choose attach, new, quit(also exit): "
-  read -e mode
+  echo "Choose a(ttach), n(ew), q(uit)(also exit): "
+  read -rsn1 mode
   if [ -z $mode ];then
   echo no choice,exiting
   return 1
