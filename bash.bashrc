@@ -12,14 +12,14 @@ HISTFILE="$HOME/.bash_history" ## bash history file
 # This script is only for bash,and it cannot be executed via almost any other shells.
 # To check alias,run "alias".
 # This script is customized for Arch Linux,and you some extra modify may be needed for other distributions.
-# This script depends on these packages: pkgfile(/usr/lib/command-not-found on ubuntu,if theres nothing,try ":/ # find | grep command-not-found".), neofetch(optional), fastfetch(optional), bash-completion, bash, systemd, tput (ncurses on archlinux),sudo ,bc
+# This script depends on these packages: pkgfile(/usr/lib/command-not-found on ubuntu,if theres nothing,try ":/ # find | grep command-not-found".), neofetch(optional), fastfetch(optional), bash-completion, bash, systemd, tput (ncurses on archlinux),sudo ,bc ,tmux
 ### BEGIN DEPENDENCY CHECKING ###
 if [ ! -f $RAMFS_DIR/hasramfsdir ];then 
 mkdir $RAMFS_DIR
 chmod 777 $RAMFS_DIR
 touch $RAMFS_DIR/hasramfsdir
 fi
-bashrc_deps="pkgfile bash-completion bash systemd ncurses sudo bc"
+bashrc_deps="pkgfile bash-completion bash systemd ncurses sudo bc tmux"
 if [ -x /usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
         echo "Its the first time to start bash since boot,checking dependencies..."
         if pacman -Qq $bashrc_deps > /dev/null 2>&1;then
@@ -108,7 +108,7 @@ in_init=0
 tmuxmgr() {
 if [ ! -z $TMUX ];then
 echo "You have already attached a tmux session!"
-return 0
+return 1
 fi
   sessions=$(tmux list-sessions -F "#S" 2>/dev/null)
   if [ -z $sessions ];then
