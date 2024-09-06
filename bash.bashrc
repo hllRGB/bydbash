@@ -5,7 +5,7 @@ color_prompt=yes #yes/no
 export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01' #GCC Colors
 shopt -s autocd cdspell histverify xpg_echo histappend checkwinsize  ## bash acts
 RAMFS_DIR="/tmp/bashrcFuncDatas" ### path to save bashrc datas
-SYSTEM_FETCH="fastfetch --color blue --logo-color-1 blue --logo-color-2 blue"
+SYSTEM_FETCH="fastfetch"
 HISTFILE="$HOME/.bash_history" ## bash history file
 ### END CONFIGS ###
 ### README ###
