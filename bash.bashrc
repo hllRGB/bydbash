@@ -45,6 +45,7 @@ bind 'set colored-stats on'
 bind 'set colored-completion-prefix on'
 complete -F _comp_command sudo
 complete -F _comp_command _
+complete -E
 complete -E -F _comp_complete_longopt
 # Command timing
 timing(){
@@ -106,12 +107,12 @@ fi
 in_init=0
 }
 tmuxmgr() {
-if [ ! -z $TMUX ];then
+if [ ! -z "$TMUX" ];then
 echo "You have already attached a tmux session!"
 return 1
 fi
   sessions=$(tmux list-sessions -F "#S" 2>/dev/null)
-  if [ -z $sessions ];then
+  if [ -z "$sessions" ];then
   tmux new-session -s bash
   return 0
   else
