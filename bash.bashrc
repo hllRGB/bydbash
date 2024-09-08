@@ -136,7 +136,7 @@ fi
       tmuxmgr
     fi
   elif [ "$mode"x == "new"x ]; then
-    read -ep "Session name: " new_session
+    read -p "Session name: " new_session
     tmux new-session -d -s "$new_session"
     tmux attach-session -t "$new_session"
   elif [ "$mode"x == "quit"x ]; then
@@ -174,13 +174,22 @@ else
         echo "If you are not using Arch Linux(or any other pacman-based distribution),try to use other package searcher."
 fi
 }
+git_current_branch(){
+	local ref=$(git symbolic-ref --quiet HEAD 2>/dev/null)
+	local return=$?
+	if [[ $return != 0 ]]; then
+		[[ $ret == 128 ]] && return
+		ref=$(git rev-parse --short HEAD 2>/dev/null) || return
+	fi
+	echo "-[${ref#refs/heads/}]"
+}
 ### Done ###
-PS1='\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&tput blink&&echo -n ':'&&tput sgr0&&echo -n $time2 $([ $UID = 0 ]&&tput smul&&tput blink&&echo -n \[\033[1\;31m\]$(whoami)&&tput sgr0||echo \[\033[1\;34m\]$(whoami)))\[\033[1;31m\]@\[\033[34m\]\h \[\033[33m\]\w\[\033[31m\]]\[\033[m\]\n└─$([ $ret = 0 ]&&echo \[\033[1\;32m\]||echo \[\033[1\;31m\]$ret)\$>>_\[\e[m\] '
+PS1='\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&tput blink&&echo -n ':'&&tput sgr0&&echo -n $time2 $([ $UID = 0 ]&&tput smul&&tput blink&&echo -n \[\033[1\;31m\]$(whoami)&&tput sgr0||echo \[\033[1\;34m\]$(whoami)))\[\033[1;31m\]@\[\033[34m\]\h \[\033[33m\]\w\[\033[31m\]]\[\033[m\]$(git_current_branch)\n└─$([ $ret = 0 ]&&echo \[\033[1\;32m\]||echo \[\033[1\;31m\]$ret)\$>>_\[\e[m\] '
 PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>'
 PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > '
 PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> '
 if [ $color_prompt = no ];then 
-    PS1='┌─[$0-$$ $(echo -n "$time1:$time2") $(whoami)@\h \w]\[\033[m\]\n└─$([ $ret = 0 ]||echo -n $ret)\$>>_\[\e[m\] '
+	PS1='┌─[$0-$$ $(echo -n "$time1:$time2") $(whoami)@\h \w]\[\033[m\]$(git_current_branch)\n└─$([ $ret = 0 ]||echo -n $ret)\$>>_\[\e[m\] '
     PS2='[Line $LINENO]> '
     PS3='\[[$0]Select > '
     PS4='\[[$0] Line $LINENO:> '
