@@ -137,7 +137,7 @@ fi
       tmuxmgr
     fi
   elif [ "$mode"x == "new"x ]; then
-    read -p "Session name: " new_session
+    read -ep "Session name: " new_session
     tmux new-session -d -s "$new_session"
     tmux attach-session -t "$new_session"
   elif [ "$mode"x == "quit"x ]; then
