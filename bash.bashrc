@@ -113,7 +113,7 @@ return 1
 fi
   sessions=$(tmux list-sessions -F "#S" 2>/dev/null)
   if [ -z "$sessions" ];then
-  tmux new-session -s bash
+  /usr/bin/tmux new-session -s bash
   return 0
   else
   echo "\033[1;32m$(tmux ls)\033[m"
@@ -129,19 +129,19 @@ fi
     read -e -p "Session name (or Enter to attach to last session: " session_name
     if [ -z "$session_name" ]; then
 	    local empty=yes
-      tmux a
+      /usr/bin/tmux a
     else session_name=$(compgen -W "$sessions" -- "$session_name")
     fi
     if [[ "$sessions" == *"$session_name"* ]] && [[ "$empty"x != yesx ]]; then
-      tmux a -t "$session_name"
+      /usr/bin/tmux a -t "$session_name"
 elif [[ "$empty"x != yesx ]];then
       echo "Can't find the session name."
       tmuxmgr
     fi
   elif [ "$mode"x == "new"x ]; then
     read -ep "Session name: " new_session
-    tmux new-session -d -s "$new_session"
-    tmux a -t "$new_session"
+    /usr/bin/tmux new-session -d -s "$new_session"
+    /usr/bin/tmux a -t "$new_session"
   elif [ "$mode"x == "quit"x ]; then
     echo "canceled."
     return 1
@@ -168,7 +168,7 @@ command_not_found_handle(){
 cmdnotfound(){
 if [ -x /usr/bin/pkgfile ];then
         echo "Searching command $1 ..."
-        pkgfile $1
+        /usr/bin/pkgfile $1
 elif [ -x /usr/lib/command-not-found ];then
         /usr/lib/command-not-found -- "$1"
 else
@@ -193,7 +193,7 @@ git_current_branch(){
 	echo -ne "$echo"
 }
 ### Done ###
-PS1='\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&tput blink&&echo -n ':'&&tput sgr0&&echo -n $time2 $([ $UID = 0 ]&&tput smul&&tput blink&&echo -n \[\033[1\;31m\]$(whoami)&&tput sgr0||echo \[\033[1\;34m\]$(whoami)))\[\033[1;31m\]@\[\033[34m\]\h \[\033[33m\]\w\[\033[31m\]]\[\033[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\033[1\;32m\]||echo \[\033[1\;31m\]$ret)\$>>_\[\e[m\] '
+PS1='\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&/usr/bin/tput blink&&echo -n ':'&&/usr/bin/tput sgr0&&echo -n $time2 $([ $UID = 0 ]&&/usr/bin/tput smul&&/usr/bin/tput blink&&echo -n \[\033[1\;31m\]$(whoami)&&/usr/bin/tput sgr0||echo \[\033[1\;34m\]$(whoami)))\[\033[1;31m\]@\[\033[34m\]\h \[\033[33m\]\w\[\033[31m\]]\[\033[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\033[1\;32m\]||echo \[\033[1\;31m\]$ret)\$>>_\[\e[m\] '
 PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>'
 PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > '
 PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> '
@@ -271,7 +271,7 @@ unspath() {
     fi
 
     for number in "$@"; do
-        sed -i "/^$number::::::/d" "$SAVE_FILE"
+        /usr/bin/sed -i "/^$number::::::/d" "$SAVE_FILE"
         echo "Path with number $number removed"
     done
 }
@@ -296,7 +296,7 @@ fm() {
     for arg in "$@"; do
         if [[ "$arg" =~ ^fm[0-9]+$ ]]; then
             local path
-            path=$(grep "^$arg::::::" "$SAVE_FILE" | awk -F'::::::' '{print $2}')
+            path=$(/usr/bin/grep "^$arg::::::" "$SAVE_FILE" | /usr/bin/awk -F'::::::' '{print $2}')
             if [ -z "$path" ]; then
                 echo "Error: No path saved with number $arg"
                 return 1
