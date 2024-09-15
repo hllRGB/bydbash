@@ -127,19 +127,21 @@ fi
   mode=$(compgen -W "attach new quit exit" -- "$mode")
   if [ "$mode"x == "attach"x ]; then
     read -e -p "Session name (or Enter to attach to last session: " session_name
-    session_name=$(compgen -W "$sessions" -- "$session_name")
     if [ -z "$session_name" ]; then
-      tmux attach-session
-    elif [[ "$sessions" == *"$session_name"* ]]; then
-      tmux attach-session -t "$session_name"
-    else
+	    local empty=yes
+      tmux a
+    else session_name=$(compgen -W "$sessions" -- "$session_name")
+    fi
+    if [[ "$sessions" == *"$session_name"* ]] && [[ "$empty"x != yesx ]]; then
+      tmux a -t "$session_name"
+elif [[ "$empty"x != yesx ]];then
       echo "Can't find the session name."
       tmuxmgr
     fi
   elif [ "$mode"x == "new"x ]; then
     read -ep "Session name: " new_session
     tmux new-session -d -s "$new_session"
-    tmux attach-session -t "$new_session"
+    tmux a -t "$new_session"
   elif [ "$mode"x == "quit"x ]; then
     echo "canceled."
     return 1
@@ -210,6 +212,7 @@ if [ -x /usr/bin/dircolors ]; then
     alias grep='grep --color=auto'
     alias fgrep='fgrep --color=auto'
     alias egrep='egrep --color=auto'
+    alias cdl='cd $OLDPWD'
 fi
 alias ll='ls -alF'
 alias la='ls -A'
