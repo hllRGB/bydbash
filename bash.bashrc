@@ -290,9 +290,7 @@ fm() {
     if [ "$cmd"awa == awa ]; then
             echo "Usage: fm [command] [command-args]"
             return 1
-            echo 1
     fi
-    echo 2
     for arg in "$@"; do
         if [[ "$arg" =~ ^fm[0-9]+$ ]]; then
             local path
