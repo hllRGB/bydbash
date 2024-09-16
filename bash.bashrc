@@ -238,7 +238,7 @@ if ! shopt -oq posix; then
   fi
 fi
 if [ -z $SUDO_USER ];then
-command $SYSTEM_FETCH
+eval $SYSTEM_FETCH
 fi
 SAVE_FILE="$RAMFS_DIR/saved_paths.txt"
 if [ ! -f "$SAVE_FILE" ]; then
