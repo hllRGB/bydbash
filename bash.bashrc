@@ -1,18 +1,21 @@
+#!/bin/bash
 # ~/.bashrc: executed by bash(1) for non-login shells.
-# see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
+# see $SYSROOT/usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 ### BASHRC CONFIGS ###
+SYSROOT=""  ### empty for /
 color_prompt=yes #yes/no
 export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01' #GCC Colors
 shopt -s autocd cdspell histverify xpg_echo histappend checkwinsize  ## bash acts
-RAMFS_DIR="/tmp/bashrcFuncDatas" ### path to save bashrc datas
+RAMFS_DIR="$SYSROOT/tmp/bashrcFuncDatas" ### path to save bashrc datas
 SYSTEM_FETCH="fastfetch"
 HISTFILE="$HOME/.bash_history" ## bash history file
+PROMPT_DIRTRIM=3 ###how many parent directory will be shown in the prompt
 ### END CONFIGS ###
 ### README ###
 # This script is only for bash,and it cannot be executed via almost any other shells.
 # To check alias,run "alias".
 # This script is customized for Arch Linux,and you some extra modify may be needed for other distributions.
-# This script depends on these packages: pkgfile(/usr/lib/command-not-found on ubuntu,if theres nothing,try ":/ # find | grep command-not-found".), neofetch(optional), fastfetch(optional), bash-completion, bash, systemd, tput (ncurses on archlinux),sudo ,bc ,tmux
+# This script depends on these packages: pkgfile($SYSROOT/usr/lib/command-not-found on ubuntu,if theres nothing,try ":/ # find | grep command-not-found".), neofetch(optional), fastfetch(optional), bash-completion, bash, systemd, tput (ncurses on archlinux),sudo ,bc ,tmux
 ### BEGIN DEPENDENCY CHECKING ###
 if [ ! -f $RAMFS_DIR/hasramfsdir ];then 
 mkdir $RAMFS_DIR
@@ -20,19 +23,19 @@ chmod 777 $RAMFS_DIR
 touch $RAMFS_DIR/hasramfsdir
 fi
 bashrc_deps="pkgfile bash-completion bash systemd ncurses sudo bc tmux"
-if [ -x /usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
+if [ -x $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
         echo "Its the first time to start bash since boot,checking dependencies..."
         if pacman -Qq $bashrc_deps > /dev/null 2>&1;then
                 touch $RAMFS_DIR/complete_dependency
                 clear
-        elif [ -x /usr/bin/pacman ];then
+        elif [ -x $SYSROOT/usr/bin/pacman ];then
                 echo "These packages are needed.To make sure the bashrc will be executed successfully,you have to install them."
                 sudo pacman -Sy $bashrc_deps --neede --overwrite '*'
                 clear
         fi
-elif [ ! -f /usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
+elif [ ! -f $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
         echo "Cannot check dependencies on the first time to start bash since boot.please make sure the required commands are valid."
-        echo "You can view /etc/bash.bashrc to check which commands are needed."
+        echo "You can view $SYSROOT/etc/bash.bashrc to check which commands are needed."
         echo "Running bash normally."
         touch $RAMFS_DIR/complete_dependency
 fi
@@ -49,17 +52,14 @@ complete -E
 complete -E -F _comp_complete_longopt
 # Command timing
 timing(){
-        local args=$1
-        if [ "$args" == pre ];then
-if [ $in_init == 1 ];then
-            return
-    fi
+        if [ "$1" == pre ];then
+[ $in_init == 1 ]&&return
     start_time=$(date +%s%N)
     in_timing="yes"
-elif [ "$args" == post ];then
-        local command_to_execute="$(history 1 | sed 's/^ *[0-9]\+ *//')"
+elif [ "$1" == post ];then
     local end_time=$(date +%s%N)
     local elapsed_time_ns=$((end_time - start_time))
+        local command_to_execute="$(history 1 | sed 's/^ *[0-9]\+ *//')"
         local elapsed_time_sec=$(echo "scale=2; $elapsed_time_ns / 1000000000" | bc)
         if [ $ret == 0 ];then
                 echo -e "\033[1;32m"
@@ -95,15 +95,15 @@ pre_exec(){
 }
 post_exec(){
 ret=$?
-time1=$(date +%T|awk -F":" {'print $1":"$2'})
-time2=$(date +%T|awk -F":" {'print $3'})
-PATH="$(pwd):$SourcePATH"
 history -a
 deldups
 if [ $in_init == 0 ];then
         pre_histsize=$(stat -c%s $HISTFILE)
         timing post
 fi
+time1=$(date +%T|awk -F":" {'print $1":"$2'})
+time2=$(date +%T|awk -F":" {'print $3'})
+PATH="$(pwd):$SourcePATH"
 in_init=0
 }
 tmuxmgr() {
@@ -113,35 +113,41 @@ return 1
 fi
   sessions=$(tmux list-sessions -F "#S" 2>/dev/null)
   if [ -z "$sessions" ];then
-  /usr/bin/tmux new-session -s bash
+  $SYSROOT/usr/bin/tmux new-session -s bash
   return 0
   else
   echo "\033[1;32m$(tmux ls)\033[m"
   fi
-  echo "Choose a(ttach), n(ew), q(uit)(also exit): "
+  echo "Choose a(ttach), n(ew), k(ill), q(uit)(also exit): "
   read -rsn1 mode
   if [ -z $mode ];then
   echo no choice,exiting
   return 1
   fi
-  mode=$(compgen -W "attach new quit exit" -- "$mode")
+  mode=$(compgen -W "attach new kill quit exit" -- "$mode")
   if [ "$mode"x == "attach"x ]; then
     read -e -p "Session name (or Enter to attach to last session: " session_name
     if [ -z "$session_name" ]; then
 	    local empty=yes
-      /usr/bin/tmux a
+      $SYSROOT/usr/bin/tmux a
     else session_name=$(compgen -W "$sessions" -- "$session_name")
     fi
     if [[ "$sessions" == *"$session_name"* ]] && [[ "$empty"x != yesx ]]; then
-      /usr/bin/tmux a -t "$session_name"
+      $SYSROOT/usr/bin/tmux a -t "$session_name"
 elif [[ "$empty"x != yesx ]];then
       echo "Can't find the session name."
       tmuxmgr
     fi
   elif [ "$mode"x == "new"x ]; then
     read -ep "Session name: " new_session
-    /usr/bin/tmux new-session -d -s "$new_session"
-    /usr/bin/tmux a -t "$new_session"
+    $SYSROOT/usr/bin/tmux new-session -d -s "$new_session"
+    $SYSROOT/usr/bin/tmux a -t "$new_session"
+elif [ "$mode"x == "kill"x ];then
+	read -ep "Session name: " kill_session
+	kill_session=$(compgen -W "$sessions" -- "$kill_session")
+	read -ep "Do you really want to kill this session: $kill_session ? [y/N]" kill
+	[ -z $kill ]&&kill=n
+	[ $kill == y ]&&tmux kill-session -t $kill_session||[ $kill == n ]&&return 1||[ $kill == N ]&&return 1
   elif [ "$mode"x == "quit"x ]; then
     echo "canceled."
     return 1
@@ -159,18 +165,18 @@ HISTCONTROL=ignorespace
 HISTSIZE=100000
 HISTFILESIZE=200000
 # make less more friendly for non-text input files, see lesspipe(1)
-[ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+[ -x $SYSROOT/usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
 PROMPT_COMMAND=post_exec
 command_not_found_handle(){
         cmdnotfound $1
 }
 ### You can modify there for other distributions ###
 cmdnotfound(){
-if [ -x /usr/bin/pkgfile ];then
+if [ -x $SYSROOT/usr/bin/pkgfile ];then
         echo "Searching command $1 ..."
-        /usr/bin/pkgfile $1
-elif [ -x /usr/lib/command-not-found ];then
-        /usr/lib/command-not-found -- "$1"
+        $SYSROOT/usr/bin/pkgfile $1
+elif [ -x $SYSROOT/usr/lib/command-not-found ];then
+        $SYSROOT/usr/lib/command-not-found -- "$1"
 else
         echo "command pkgfile not found,cant search the command."
         echo "you can install extra/pkgfile with sudo pacman -Sy pkgfile."
@@ -193,7 +199,7 @@ git_current_branch(){
 	echo -ne "$echo"
 }
 ### Done ###
-PS1='\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&/usr/bin/tput blink&&echo -n ':'&&/usr/bin/tput sgr0&&echo -n $time2 $([ $UID = 0 ]&&/usr/bin/tput smul&&/usr/bin/tput blink&&echo -n \[\033[1\;31m\]$(whoami)&&/usr/bin/tput sgr0||echo \[\033[1\;34m\]$(whoami)))\[\033[1;31m\]@\[\033[34m\]\h \[\033[33m\]\w\[\033[31m\]]\[\033[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\033[1\;32m\]||echo \[\033[1\;31m\]$ret)\$>>_\[\e[m\] '
+PS1='\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&$SYSROOT/usr/bin/tput blink&&echo -n ':'&&$SYSROOT/usr/bin/tput sgr0&&echo -n $time2 $([ $UID = 0 ]&&$SYSROOT/usr/bin/tput smul&&$SYSROOT/usr/bin/tput blink&&echo -n \[\033[1\;31m\]$(whoami)&&$SYSROOT/usr/bin/tput sgr0||echo \[\033[1\;34m\]$(whoami)))\[\033[1;31m\]@\[\033[34m\]\h \[\033[33m\]\w\[\033[31m\]]\[\033[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\033[1\;32m\]||echo \[\033[1\;31m\]$ret)\$>>_\[\e[m\] '
 PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>'
 PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > '
 PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> '
@@ -204,7 +210,7 @@ if [ $color_prompt = no ];then
     PS4='\[[$0] Line $LINENO:> '
 fi
 unset color_prompt
-if [ -x /usr/bin/dircolors ]; then
+if [ -x $SYSROOT/usr/bin/dircolors ]; then
     test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
     alias ls='ls --color=auto -v -p'
     alias dir='dir --color=auto'
@@ -231,10 +237,10 @@ if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
 if ! shopt -oq posix; then
-  if [ -f /usr/share/bash-completion/bash_completion ]; then
-    . /usr/share/bash-completion/bash_completion
-  elif [ -f /etc/bash_completion ]; then
-    . /etc/bash_completion
+  if [ -f $SYSROOT/usr/share/bash-completion/bash_completion ]; then
+    . $SYSROOT/usr/share/bash-completion/bash_completion
+  elif [ -f $SYSROOT/etc/bash_completion ]; then
+    . $SYSROOT/etc/bash_completion
   fi
 fi
 if [ -z $SUDO_USER ];then
@@ -271,7 +277,7 @@ unspath() {
     fi
 
     for number in "$@"; do
-        /usr/bin/sed -i "/^$number::::::/d" "$SAVE_FILE"
+        $SYSROOT/usr/bin/sed -i "/^$number::::::/d" "$SAVE_FILE"
         echo "Path with number $number removed"
     done
 }
@@ -294,7 +300,7 @@ fm() {
     for arg in "$@"; do
         if [[ "$arg" =~ ^fm[0-9]+$ ]]; then
             local path
-            path=$(/usr/bin/grep "^$arg::::::" "$SAVE_FILE" | /usr/bin/awk -F'::::::' '{print $2}')
+            path=$($SYSROOT/usr/bin/grep "^$arg::::::" "$SAVE_FILE" | $SYSROOT/usr/bin/awk -F'::::::' '{print $2}')
             if [ -z "$path" ]; then
                 echo "Error: No path saved with number $arg"
                 return 1
