@@ -22,6 +22,7 @@ mkdir $RAMFS_DIR
 chmod 777 $RAMFS_DIR
 touch $RAMFS_DIR/hasramfsdir
 fi
+[ ! -f $HISTFILE ]&&touch $HISTFILE
 bashrc_deps="pkgfile bash-completion bash systemd ncurses sudo bc tmux"
 if [ -x $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
         echo -n "Its the first time to start bash since boot,checking dependencies..."
