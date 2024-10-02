@@ -24,14 +24,14 @@ touch $RAMFS_DIR/hasramfsdir
 fi
 bashrc_deps="pkgfile bash-completion bash systemd ncurses sudo bc tmux"
 if [ -x $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
-        echo "Its the first time to start bash since boot,checking dependencies..."
+        echo -n "Its the first time to start bash since boot,checking dependencies..."
         if pacman -Qq $bashrc_deps > /dev/null 2>&1;then
                 touch $RAMFS_DIR/complete_dependency
-                clear
+                echo -e "\r"
         elif [ -x $SYSROOT/usr/bin/pacman ];then
-                echo "These packages are needed.To make sure the bashrc will be executed successfully,you have to install them."
+                echo -n "These packages are needed.To make sure the bashrc will be executed successfully,you have to install them."
                 sudo pacman -Sy $bashrc_deps --neede --overwrite '*'
-                clear
+                echo -e "\r"
         fi
 elif [ ! -f $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
         echo "Cannot check dependencies on the first time to start bash since boot.please make sure the required commands are valid."
@@ -59,7 +59,7 @@ timing(){
 elif [ "$1" == post ];then
     local end_time=$(date +%s%N)
     local elapsed_time_ns=$((end_time - start_time))
-        local command_to_execute="$(history 1 | sed 's/^ *[0-9]\+ *//')"
+        local command_to_execute=$(history 1 | sed 's/^ *[0-9]\+ *//')
         local elapsed_time_sec=$(echo "scale=2; $elapsed_time_ns / 1000000000" | bc)
         if [ $ret == 0 ];then
                 echo -e "\033[1;32m"
@@ -69,7 +69,8 @@ elif [ "$1" == post ];then
         if [ $post_histsize -eq $pre_histsize ] && [ $deldups_exec -ne 1 ];then
                 command_to_execute=''
         fi
-        echo -e "$command_to_execute: ${elapsed_time_sec} s\033[m"
+        echo -En "$command_to_execute: ${elapsed_time_sec} s"
+	echo -e "\033[m"
     unset start_time
     unset in_timing
     post_histsize=$pre_histsize
