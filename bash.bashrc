@@ -23,7 +23,7 @@ chmod 777 $RAMFS_DIR
 touch $RAMFS_DIR/hasramfsdir
 fi
 [ ! -f $HISTFILE ]&&touch $HISTFILE
-bashrc_deps="pkgfile bash-completion bash systemd ncurses sudo bc tmux"
+bashrc_deps="pkgfile bash-completion bash systemd ncurses sudo bc tmux git"
 if [ -x $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
         echo -n "Its the first time to start bash since boot,checking dependencies..."
         if pacman -Qq $bashrc_deps > /dev/null 2>&1;then
@@ -32,6 +32,7 @@ if [ -x $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];the
         elif [ -x $SYSROOT/usr/bin/pacman ];then
                 echo -n "These packages are needed.To make sure the bashrc will be executed successfully,you have to install them."
                 sudo pacman -Sy $bashrc_deps --neede --overwrite '*'
+		sudo pkgfile --update
                 echo -e "\r"
         fi
 elif [ ! -f $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
@@ -51,7 +52,6 @@ complete -F _comp_command sudo
 complete -F _comp_command _
 complete -E
 complete -E -F _comp_complete_longopt
-# Command timing
 timing(){
         if [ "$1" == pre ];then
 [ $in_init == 1 ]&&return
@@ -245,7 +245,7 @@ if ! shopt -oq posix; then
     . $SYSROOT/etc/bash_completion
   fi
 fi
-if [ -z $SUDO_USER ];then
+if [ -z $SUDO_USER ]&&[ $$ -ne 1 ];then
 eval $SYSTEM_FETCH
 fi
 SAVE_FILE="$RAMFS_DIR/saved_paths.txt"
