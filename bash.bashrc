@@ -17,7 +17,7 @@ PROMPT_DIRTRIM=3 ###how many parent directory will be shown in the prompt
 # This script is customized for Arch Linux,and you some extra modify may be needed for other distributions.
 # This script depends on these packages: pkgfile($SYSROOT/usr/lib/command-not-found on ubuntu,if theres nothing,try ":/ # find | grep command-not-found".), neofetch(optional), fastfetch(optional), bash-completion, bash, systemd, tput (ncurses on archlinux),sudo ,bc ,tmux
 ### BEGIN DEPENDENCY CHECKING ###
-if [ ! -f $RAMFS_DIR/hasramfsdir ];then 
+if [ ! -f $RAMFS_DIR/hasramfsdir ]&&[ $$ -ne 1 ];then 
 mkdir $RAMFS_DIR
 chmod 777 $RAMFS_DIR
 touch $RAMFS_DIR/hasramfsdir
