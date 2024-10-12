@@ -214,7 +214,7 @@ fi
 unset color_prompt
 if [ -x $SYSROOT/usr/bin/dircolors ]; then
     test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
-    alias ls='ls --color=auto -v -p'
+    alias ls='ls --color=auto -v -p -CF'
     alias dir='dir --color=auto'
     alias vdir='vdir --color=auto'
     alias grep='grep --color=auto'
@@ -224,7 +224,7 @@ if [ -x $SYSROOT/usr/bin/dircolors ]; then
 fi
 alias ll='ls -alF'
 alias la='ls -A'
-alias l='ls -CF'
+alias l='ls'
 alias lf='ls -alFA --color=auto'
 alias lh='lf -h'
 alias nf='neofetch'
