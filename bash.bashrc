@@ -248,9 +248,9 @@ fi
 if [ -z $SUDO_USER ]&&[ $$ -ne 1 ];then
 eval $SYSTEM_FETCH
 fi
-SAVE_FILE="$RAMFS_DIR/saved_paths.txt"
-if [ ! -f "$SAVE_FILE" ]; then
-    touch "$SAVE_FILE"
+PATHS_SAVE_FILE="$RAMFS_DIR/saved_paths.txt"
+if [ ! -f "$PATHS_SAVE_FILE" ]; then
+    touch "$PATHS_SAVE_FILE"
 fi
 savepath() {
     local path
@@ -263,46 +263,46 @@ savepath() {
     path=$(realpath "$input")
     fi
     local number=1
-    while grep -q "^fm$number::::::" "$SAVE_FILE"; do
+    while grep -q "^fm$number::::::" "$PATHS_SAVE_FILE"; do
         number=$((number + 1))
     done
-    echo "fm$number::::::$path" >> "$SAVE_FILE"
+    echo "fm$number::::::$path" >> "$PATHS_SAVE_FILE"
     echo "Path saved with number fm$number"
 else 
         echo Unavalid path.
     fi
 }
-unspath() {
+rmpath() {
     if [ $# -eq 0 ]; then
-        echo "Usage: unspath fmnumber [fmnumber ...]"
+        echo "Usage: rmpath pathnumber [pathnumber ...]"
         return 1
     fi
 
     for number in "$@"; do
-        $SYSROOT/usr/bin/sed -i "/^$number::::::/d" "$SAVE_FILE"
+        $SYSROOT/usr/bin/sed -i "/^$number::::::/d" "$PATHS_SAVE_FILE"
         echo "Path with number $number removed"
     done
 }
 lspath() {
-    if [ ! -s "$SAVE_FILE" ]; then
+    if [ ! -s "$PATHS_SAVE_FILE" ]; then
         echo "No paths saved"
         return 1
     fi
-    cat "$SAVE_FILE"
+    $SYSROOT/usr/bin/cat "$PATHS_SAVE_FILE"
 }
-fm() {
+fmpath() {
     local cmd="$1"
     shift
     local args=()
     local fm_args=()
     if [ "$cmd"awa == awa ]; then
-            echo "Usage: fm [command] [command-args]"
+            echo "Usage: fmpath [command] [command-args]"
             return 1
     fi
     for arg in "$@"; do
         if [[ "$arg" =~ ^fm[0-9]+$ ]]; then
             local path
-            path=$($SYSROOT/usr/bin/grep "^$arg::::::" "$SAVE_FILE" | $SYSROOT/usr/bin/awk -F'::::::' '{print $2}')
+            path=$($SYSROOT/usr/bin/grep "^$arg::::::" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'::::::' '{print $2}')
             if [ -z "$path" ]; then
                 echo "Error: No path saved with number $arg"
                 return 1
@@ -313,7 +313,7 @@ fm() {
             local prefix="${BASH_REMATCH[1]}"
             local number="${BASH_REMATCH[2]}"
             local path
-            path=$(grep "^$number::::::" "$SAVE_FILE" | awk -F'::::::' '{print $2}')
+            path=$(grep "^$number::::::" "$PATHS_SAVE_FILE" | awk -F'::::::' '{print $2}')
             if [ -z "$path" ]; then
                 echo "Error: No path saved with number $number"
                 return 1
@@ -339,9 +339,42 @@ fm() {
     "$cmd" "${args[@]}"
 }
 complete -o default -o nospace -F _comp_complete_longopt savepath
-complete -o default -o nospace -F _comp_complete_longopt unspath
-complete -o default -o nospace -F _comp_command fm
+cdpath(){
+local path
+[ "$1"x == "--help"x ]&&echo "Usage:cdpath pathnumber"
+path=$($SYSROOT/usr/bin/grep "^$1::::::" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'::::::' '{print $2}')
+[ -z $path ]&&echo "Error: No Paths save with number $1"&&return 1
+eval "ls -d $path"
+cd $path
+}
+_comp_bydbash_lspath(){
+    local waiting_to_complete
+    waiting_to_complete=$(lspath|$SYSROOT/usr/bin/awk -F'::::::' '{print $1}')
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	COMPREPLY=($(compgen -W "$waiting_to_complete" -- $cur))
+}
+
 clpath(){
-        > "$SAVE_FILE"
+        > "$PATHS_SAVE_FILE"
         echo "Paths cleared."
 }
+
+complete -o default -o nospace -F _comp_bydbash_lspath rmpath
+complete -o default -o nospace -F _comp_bydbash_lspath cdpath
+# 定义补全函数
+_comp_bydbash_fmpath() {    
+	local waiting_to_complete
+    waiting_to_complete=$(lspath|$SYSROOT/usr/bin/awk -F'::::::' '{print $1}')
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    if [[ $cur == *"fm"* ]]; then
+        COMPREPLY=($(compgen -W "$waiting_to_complete" -- $cur))
+        COMPREPLY+=($(compgen -f -d -- ${cur%"fm"}fm))
+    else
+        _comp_command
+    fi
+}
+
+
+complete -o default -o nospace -F _comp_bydbash_fmpath fmpath
