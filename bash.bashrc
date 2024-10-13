@@ -278,15 +278,18 @@ rmpath() {
         echo "Usage: rmpath [bpathnumber ...]"
         return 1
     fi
-
+	
     for number in "$@"; do
+	if grep $number $PATHS_SAVE_FILE >/dev/null 2>&1;then
         $SYSROOT/usr/bin/sed -i "/^$number----bydpath-binding-to----/d" "$PATHS_SAVE_FILE"
         echo "Path with number $number removed"
+else 
+	echo "No such path number: $number"
+	fi
     done
 }
 lspath() {
     if [ ! -s "$PATHS_SAVE_FILE" ]; then
-        echo "No paths saved"
         return 1
     fi
     $SYSROOT/usr/bin/cat "$PATHS_SAVE_FILE"
@@ -326,7 +329,7 @@ bydpath() {
         fi
     done
     if [[ "$cmd" == "sudo" || "$EUID" -eq 0 ]]; then
-        echo "You are about to execute a command as root or using sudo:"
+        echo "You are about to execute a command as root:"
         echo "$cmd"
         for bpath_arg in "${bpath_args[@]}"; do
             echo "$bpath_arg"
@@ -350,9 +353,14 @@ cd $path
 }
 _comp_bydbash_lspath(){
     local waiting_to_complete
-    waiting_to_complete=$(lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
+    waiting_to_complete=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
+    local ref=$?
+    if [ $ref -ne 1 ];then
 	cur="${COMP_WORDS[COMP_CWORD]}"
 	COMPREPLY=($(compgen -W "$waiting_to_complete" -- $cur))
+else
+	COMPREPLY=(No-Path)
+    fi
 }
 
 clpath(){
@@ -365,7 +373,7 @@ complete -o default -o nospace -F _comp_bydbash_lspath cdpath
 # 定义补全函数
 _comp_bydbash_bydpath() {    
 	local waiting_to_complete
-    waiting_to_complete=$(lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
+    waiting_to_complete=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
     local cur prev opts
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
