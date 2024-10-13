@@ -1,29 +1,36 @@
 #!/bin/bash
 # ~/.bashrc: executed by bash(1) for non-login shells.
 # see $SYSROOT/usr/share/doc/bash/examples/startup-files (in the package bash-doc)
-### BASHRC CONFIGS ###
-SYSROOT=""  ### empty for /
+### BASHRC 配置 ###
+
+
+SYSROOT=""  ### 留空就是/,主要为了适配termux
 color_prompt=yes #yes/no
 export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01' #GCC Colors
-shopt -s autocd cdspell histverify xpg_echo histappend checkwinsize  ## bash acts
-RAMFS_DIR="$SYSROOT/tmp/bashrcFuncDatas" ### path to save bashrc datas
+shopt -s autocd cdspell histverify xpg_echo histappend checkwinsize  ## bash的一些功能开关
+RAMFS_DIR="$SYSROOT/tmp/bashrcFuncDatas" ### bashrc数据目录
 SYSTEM_FETCH="fastfetch"
-HISTFILE="$HOME/.bash_history" ## bash history file
-PROMPT_DIRTRIM=3 ###how many parent directory will be shown in the prompt
-### END CONFIGS ###
-### README ###
-# This script is only for bash,and it cannot be executed via almost any other shells.
-# To check alias,run "alias".
-# This script is customized for Arch Linux,and you some extra modify may be needed for other distributions.
-# This script depends on these packages: pkgfile($SYSROOT/usr/lib/command-not-found on ubuntu,if theres nothing,try ":/ # find | grep command-not-found".), neofetch(optional), fastfetch(optional), bash-completion, bash, systemd, tput (ncurses on archlinux),sudo ,bc ,tmux
-### BEGIN DEPENDENCY CHECKING ###
+HISTFILE="$HOME/.bash_history" ## bash 历史记录文件
+PROMPT_DIRTRIM=3 ###提示符中显示的目录层级数(效果类似~/.../aaa/bbb/ccc/)
+
+
+###看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我###
+# 最好别拿别的shell跑这个
+# 用alias命令查看别名
+# ArchLinux几乎可以开箱即用,别的发行版要改改
+# 脚本有依赖的嗷, pkgfile(搜命令的),bash-completion(补全的),bash(应该不用多说了),ncurses(提供tput),sudo(一些东西要提权用),bc(bashrc用作数据处理),tmux(好东西),git(好东西)
+
+
+
+
+### 这开始检查依赖 ###
 if [ ! -f $RAMFS_DIR/hasramfsdir ]&&[ $$ -ne 1 ];then 
 mkdir $RAMFS_DIR
 chmod 777 $RAMFS_DIR
 touch $RAMFS_DIR/hasramfsdir
 fi
 [ ! -f $HISTFILE ]&&touch $HISTFILE
-bashrc_deps="pkgfile bash-completion bash systemd ncurses sudo bc tmux git"
+bashrc_deps="pkgfile bash-completion bash ncurses sudo bc tmux git"
 if [ -x $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
         echo -n "Its the first time to start bash since boot,checking dependencies..."
         if pacman -Qq $bashrc_deps > /dev/null 2>&1;then
@@ -41,7 +48,9 @@ elif [ ! -f $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ]
         echo "Running bash normally."
         touch $RAMFS_DIR/complete_dependency
 fi
+### 检查好了
 in_init=1
+###进入init状态
 SourcePATH=$PATH
 bind 'set show-all-if-ambiguous on'
 bind '"\t": menu-complete'
@@ -52,6 +61,7 @@ complete -F _comp_command sudo
 complete -F _comp_command _
 complete -E
 complete -E -F _comp_complete_longopt
+#这给命令计时用的
 timing(){
         if [ "$1" == pre ];then
 [ $in_init == 1 ]&&return
@@ -78,6 +88,7 @@ elif [ "$1" == post ];then
     unset pre_histsize
         fi
 }
+###辅助命令计时器的
 deldups(){
         local first_cmd=$(tail -n 1 $HISTFILE)
         local sec_cmd=$(tail -n 2 $HISTFILE|sed '$d')
@@ -92,9 +103,11 @@ deldups(){
 history -a
 pre_histsize=$(stat -c%s $HISTFILE)
 post_histsize=$pre_histsize
+###命令执行之前由trap触发
 pre_exec(){
         [ "$in_timing"x == yesx ]||timing pre
 }
+###命令执行之后由PROMPT_COMMAND触发
 post_exec(){
 ret=$?
 history -a
@@ -108,6 +121,7 @@ time2=$(date +%T|awk -F":" {'print $3'})
 PATH="$(pwd):$SourcePATH"
 in_init=0
 }
+###tmux小工具
 tmuxmgr() {
 if [ ! -z "$TMUX" ];then
 echo "You have already attached a tmux session!"
@@ -169,10 +183,11 @@ HISTFILESIZE=200000
 # make less more friendly for non-text input files, see lesspipe(1)
 [ -x $SYSROOT/usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
 PROMPT_COMMAND=post_exec
+###命令找不到就调用这个(这是bash内建的小功能,debian的bashrc好像就自带这个)
 command_not_found_handle(){
         cmdnotfound $1
 }
-### You can modify there for other distributions ###
+### 不同发行版有不同的搜索工具,这里只写了俩,需要的自己改 ###
 cmdnotfound(){
 if [ -x $SYSROOT/usr/bin/pkgfile ];then
         echo "Searching command $1 ..."
@@ -185,6 +200,7 @@ else
         echo "If you are not using Arch Linux(or any other pacman-based distribution),try to use other package searcher."
 fi
 }
+###显示git分支的
 git_current_branch(){
 	local ref
 	ref=$(git symbolic-ref --quiet HEAD 2>/dev/null)
@@ -200,7 +216,7 @@ git_current_branch(){
 	fi
 	echo -ne "$echo"
 }
-### Done ###
+### 设置提示符的 ###
 PS1='\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&$SYSROOT/usr/bin/tput blink&&echo -n ':'&&$SYSROOT/usr/bin/tput sgr0&&echo -n $time2 $([ $UID = 0 ]&&$SYSROOT/usr/bin/tput smul&&$SYSROOT/usr/bin/tput blink&&echo -n \[\033[1\;31m\]$(whoami)&&$SYSROOT/usr/bin/tput sgr0||echo \[\033[1\;34m\]$(whoami)))\[\033[1;31m\]@\[\033[34m\]\h \[\033[33m\]\w\[\033[31m\]]\[\033[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\033[1\;32m\]||echo \[\033[1\;31m\]$ret)\$>>_\[\e[m\] '
 PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>'
 PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > '
@@ -212,6 +228,7 @@ if [ $color_prompt = no ];then
     PS4='\[[$0] Line $LINENO:> '
 fi
 unset color_prompt
+###一些别名
 if [ -x $SYSROOT/usr/bin/dircolors ]; then
     test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
     alias ls='ls --color=auto -v -p -CF'
@@ -245,6 +262,7 @@ if ! shopt -oq posix; then
     . $SYSROOT/etc/bash_completion
   fi
 fi
+###整个fastfetch也不错(前头可以改嗷)
 if [ -z $SUDO_USER ]&&[ $$ -ne 1 ];then
 eval $SYSTEM_FETCH
 fi
@@ -252,6 +270,8 @@ PATHS_SAVE_FILE="$RAMFS_DIR/saved_paths.txt"
 if [ ! -f "$PATHS_SAVE_FILE" ]; then
     touch "$PATHS_SAVE_FILE"
 fi
+###路径实用小工具
+###保存绝对路径
 savepath() {
     local path
     local input="$1"
@@ -273,6 +293,7 @@ else
         echo Unavalid path.
     fi
 }
+###删除绝对路径的保存
 rmpath() {
     if [ $# -eq 0 ]; then
         echo "Usage: rmpath [bpathnumber ...]"
@@ -288,12 +309,14 @@ else
 	fi
     done
 }
+###列出保存的路径
 lspath() {
     if [ ! -s "$PATHS_SAVE_FILE" ]; then
         return 1
     fi
     $SYSROOT/usr/bin/cat "$PATHS_SAVE_FILE"
 }
+###使命令支持使用保存的路径编号
 bydpath() {
     local cmd="$1"
     shift
@@ -343,7 +366,8 @@ bydpath() {
     "$cmd" "${args[@]}"
 }
 complete -o default -o nospace -F _comp_complete_longopt savepath
-cdpath(){
+###使cd支持保存的绝对路径
+cd2path(){
 local path
 [ "$1"x == "--help"x ]&&echo "Usage:cdpath pathnumber"
 path=$($SYSROOT/usr/bin/grep "^$1----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
@@ -351,6 +375,7 @@ path=$($SYSROOT/usr/bin/grep "^$1----bydpath-binding-to----" "$PATHS_SAVE_FILE" 
 eval "ls -d $path"
 cd $path
 }
+###路径小工具的补全
 _comp_bydbash_lspath(){
     local waiting_to_complete
     waiting_to_complete=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
@@ -362,15 +387,14 @@ else
 	COMPREPLY=(No-Path)
     fi
 }
-
+###清空保存的路径
 clpath(){
         > "$PATHS_SAVE_FILE"
         echo "Paths cleared."
 }
-
 complete -o default -o nospace -F _comp_bydbash_lspath rmpath
 complete -o default -o nospace -F _comp_bydbash_lspath cdpath
-# 定义补全函数
+###还是补全
 _comp_bydbash_bydpath() {    
 	local waiting_to_complete
     waiting_to_complete=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
@@ -381,6 +405,5 @@ _comp_bydbash_bydpath() {
 	COMPREPLY+=($(compgen -W "$waiting_to_complete" -- $cur))
 	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
 }
-
-
 complete -o default -o nospace -F _comp_bydbash_bydpath bydpath
+###完事嗷
