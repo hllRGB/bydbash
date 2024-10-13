@@ -255,7 +255,8 @@ fi
 savepath() {
     local path
     local input="$1"
-    if ls $input -d; then
+    [ "$input"x == "--help"x ]&&echo 'Usage:savepath [path] [bpathnumber (bpath*)]'
+    if ls $input -d >/dev/null 2>&1; then
     if [ -z "$input" ]; then
             echo "No path entered.will save current directory(pwd)."
             path="$(pwd)"
@@ -263,23 +264,23 @@ savepath() {
     path=$(realpath "$input")
     fi
     local number=1
-    while grep -q "^fm$number::::::" "$PATHS_SAVE_FILE"; do
+    while grep -q "^bpath$number----bydpath-binding-to----" "$PATHS_SAVE_FILE"; do
         number=$((number + 1))
     done
-    echo "fm$number::::::$path" >> "$PATHS_SAVE_FILE"
-    echo "Path saved with number fm$number"
+    echo "bpath$number----bydpath-binding-to----$path" >> "$PATHS_SAVE_FILE"
+    echo "Path saved with number bpath$number"
 else 
         echo Unavalid path.
     fi
 }
 rmpath() {
     if [ $# -eq 0 ]; then
-        echo "Usage: rmpath pathnumber [pathnumber ...]"
+        echo "Usage: rmpath [bpathnumber ...]"
         return 1
     fi
 
     for number in "$@"; do
-        $SYSROOT/usr/bin/sed -i "/^$number::::::/d" "$PATHS_SAVE_FILE"
+        $SYSROOT/usr/bin/sed -i "/^$number----bydpath-binding-to----/d" "$PATHS_SAVE_FILE"
         echo "Path with number $number removed"
     done
 }
@@ -290,36 +291,36 @@ lspath() {
     fi
     $SYSROOT/usr/bin/cat "$PATHS_SAVE_FILE"
 }
-fmpath() {
+bydpath() {
     local cmd="$1"
     shift
     local args=()
-    local fm_args=()
+    local bpath_args=()
     if [ "$cmd"awa == awa ]; then
-            echo "Usage: fmpath [command] [command-args]"
+            echo "Usage: bydpath [command] [command-args]"
             return 1
     fi
     for arg in "$@"; do
-        if [[ "$arg" =~ ^fm[0-9]+$ ]]; then
+        if [[ "$arg" =~ ^bpath[0-9]+$ ]]; then
             local path
-            path=$($SYSROOT/usr/bin/grep "^$arg::::::" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'::::::' '{print $2}')
+            path=$($SYSROOT/usr/bin/grep "^$arg----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
             if [ -z "$path" ]; then
                 echo "Error: No path saved with number $arg"
                 return 1
             fi
             args+=("$path")
-            fm_args+=("$arg::::::$path")
-        elif [[ "$arg" =~ ^([^=]+)=(fm[0-9]+)$ ]]; then
+            bpath_args+=("$arg----bydpath-binding-to----$path")
+        elif [[ "$arg" =~ ^([^=]+)=(bpath[0-9]+)$ ]]; then
             local prefix="${BASH_REMATCH[1]}"
             local number="${BASH_REMATCH[2]}"
             local path
-            path=$(grep "^$number::::::" "$PATHS_SAVE_FILE" | awk -F'::::::' '{print $2}')
+            path=$(grep "^$number----bydpath-binding-to----" "$PATHS_SAVE_FILE" | awk -F'----bydpath-binding-to----' '{print $2}')
             if [ -z "$path" ]; then
                 echo "Error: No path saved with number $number"
                 return 1
             fi
             args+=("$prefix=$path")
-            fm_args+=("$number::::::$path")
+            bpath_args+=("$number----bydpath-binding-to----$path")
         else
             args+=("$arg")
         fi
@@ -327,8 +328,8 @@ fmpath() {
     if [[ "$cmd" == "sudo" || "$EUID" -eq 0 ]]; then
         echo "You are about to execute a command as root or using sudo:"
         echo "$cmd"
-        for fm_arg in "${fm_args[@]}"; do
-            echo "$fm_arg"
+        for bpath_arg in "${bpath_args[@]}"; do
+            echo "$bpath_arg"
         done
         read -p "Are you sure you want to proceed? (y/N): " confirm
         if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
@@ -342,14 +343,14 @@ complete -o default -o nospace -F _comp_complete_longopt savepath
 cdpath(){
 local path
 [ "$1"x == "--help"x ]&&echo "Usage:cdpath pathnumber"
-path=$($SYSROOT/usr/bin/grep "^$1::::::" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'::::::' '{print $2}')
+path=$($SYSROOT/usr/bin/grep "^$1----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
 [ -z $path ]&&echo "Error: No Paths save with number $1"&&return 1
 eval "ls -d $path"
 cd $path
 }
 _comp_bydbash_lspath(){
     local waiting_to_complete
-    waiting_to_complete=$(lspath|$SYSROOT/usr/bin/awk -F'::::::' '{print $1}')
+    waiting_to_complete=$(lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
 	cur="${COMP_WORDS[COMP_CWORD]}"
 	COMPREPLY=($(compgen -W "$waiting_to_complete" -- $cur))
 }
@@ -362,19 +363,16 @@ clpath(){
 complete -o default -o nospace -F _comp_bydbash_lspath rmpath
 complete -o default -o nospace -F _comp_bydbash_lspath cdpath
 # 定义补全函数
-_comp_bydbash_fmpath() {    
+_comp_bydbash_bydpath() {    
 	local waiting_to_complete
-    waiting_to_complete=$(lspath|$SYSROOT/usr/bin/awk -F'::::::' '{print $1}')
+    waiting_to_complete=$(lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
     local cur prev opts
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
-    if [[ $cur == *"fm"* ]]; then
-        COMPREPLY=($(compgen -W "$waiting_to_complete" -- $cur))
-        COMPREPLY+=($(compgen -f -d -- ${cur%"fm"}fm))
-    else
         _comp_command
-    fi
+	COMPREPLY+=($(compgen -W "$waiting_to_complete" -- $cur))
+	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
 }
 
 
-complete -o default -o nospace -F _comp_bydbash_fmpath fmpath
+complete -o default -o nospace -F _comp_bydbash_bydpath bydpath
