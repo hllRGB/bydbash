@@ -324,7 +324,7 @@ byd() {
     local args=()
     local bpath_args=()
     if [ "$cmd"awa == awa ]; then
-            echo "Usage: bydpath [command] [command-args]"
+            echo "Usage: byd [command] [command-args]"
             return 1
     fi
     for arg in "$@"; do
