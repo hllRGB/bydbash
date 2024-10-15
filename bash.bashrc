@@ -318,7 +318,7 @@ lspath() {
     $SYSROOT/usr/bin/cat "$PATHS_SAVE_FILE"
 }
 ###使命令支持使用保存的路径编号
-bydpath() {
+byd() {
     local cmd="$1"
     shift
     local args=()
@@ -369,15 +369,6 @@ bydpath() {
     "$cmd" "${args[@]}"
 }
 complete -o default -o nospace -F _comp_complete_longopt savepath
-###使cd支持保存的绝对路径
-cd2path(){
-local path
-[ "$1"x == "--help"x ]&&echo "Usage:cdpath pathnumber"
-path=$($SYSROOT/usr/bin/grep "^$1----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
-[ -z $path ]&&echo "Error: No Paths save with number $1"&&return 1
-eval "ls -d $path"
-cd $path
-}
 ###路径小工具的补全
 _comp_bydbash_lspath(){
     local waiting_to_complete
@@ -396,7 +387,6 @@ clpath(){
         echo "Paths cleared."
 }
 complete -o default -o nospace -F _comp_bydbash_lspath rmpath
-complete -o default -o nospace -F _comp_bydbash_lspath cd2path
 ###还是补全
 _comp_bydbash_bydpath() {    
 	local waiting_to_complete
@@ -419,7 +409,7 @@ _comp_bydbash_cd() {
 	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
 }
 
-complete -o default -o nospace -F _comp_bydbash_bydpath bydpath
+complete -o default -o nospace -F _comp_bydbash_bydpath byd
 #超级cd
 cd_deldups(){
         local first_cmd=$(tail -n 1 $CD_HISTFILE)
