@@ -12,7 +12,7 @@ RAMFS_DIR="$SYSROOT/tmp/bashrcFuncDatas" ### bashrc数据目录
 SYSTEM_FETCH="fastfetch"
 HISTFILE="$HOME/.bash_history" ## bash 历史记录文件
 PROMPT_DIRTRIM=3 ###提示符中显示的目录层级数(效果类似~/.../aaa/bbb/ccc/)
-
+CD_HISTFILE=$HOME/.bash_cd_history ### cd历史,便于撤销cd
 
 ###看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我###
 # 最好别拿别的shell跑这个
@@ -30,6 +30,7 @@ chmod 777 $RAMFS_DIR
 touch $RAMFS_DIR/hasramfsdir
 fi
 [ ! -f $HISTFILE ]&&touch $HISTFILE
+[ ! -f $CD_HISTFILE ]&&touch $CD_HISTFILE
 bashrc_deps="pkgfile bash-completion bash ncurses sudo bc tmux git"
 if [ -x $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
         echo -n "Its the first time to start bash since boot,checking dependencies..."
@@ -237,7 +238,7 @@ if [ -x $SYSROOT/usr/bin/dircolors ]; then
     alias grep='grep --color=auto'
     alias fgrep='fgrep --color=auto'
     alias egrep='egrep --color=auto'
-    alias cdl='cd $OLDPWD'
+    alias cdl='builtin cd $OLDPWD'
 fi
 alias ll='ls -alF'
 alias la='ls -A'
@@ -360,8 +361,10 @@ bydpath() {
         read -p "Are you sure you want to proceed? (y/N): " confirm
         if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
             echo "Command not executed."
+	    unset confirm
             return 1
         fi
+	unset confirm
     fi
     "$cmd" "${args[@]}"
 }
@@ -393,7 +396,7 @@ clpath(){
         echo "Paths cleared."
 }
 complete -o default -o nospace -F _comp_bydbash_lspath rmpath
-complete -o default -o nospace -F _comp_bydbash_lspath cdpath
+complete -o default -o nospace -F _comp_bydbash_lspath cd2path
 ###还是补全
 _comp_bydbash_bydpath() {    
 	local waiting_to_complete
@@ -405,5 +408,53 @@ _comp_bydbash_bydpath() {
 	COMPREPLY+=($(compgen -W "$waiting_to_complete" -- $cur))
 	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
 }
+_comp_bydbash_cd() {    
+	local waiting_to_complete
+    waiting_to_complete=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+        _comp_complete_longopt
+	COMPREPLY+=($(compgen -W "$waiting_to_complete" -- $cur))
+	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
+}
+
 complete -o default -o nospace -F _comp_bydbash_bydpath bydpath
+#超级cd
+cd_deldups(){
+        local first_cmd=$(tail -n 1 $CD_HISTFILE)
+        local sec_cmd=$(tail -n 2 $CD_HISTFILE|sed '$d')
+        if [ "$first_cmd"x == "$sec_cmd"x ];then
+                sed -i '$d' $CD_HISTFILE
+        fi
+}
+function cd(){
+	if [ "$1"x == '-s'x ];then
+	[ -z "$2" ]&&echo "Needs at least one char to search!"&&return 1||cat $CD_HISTFILE | grep "$@";return
+	elif [ "$1"x == '-l'x ];then
+		cat $CD_HISTFILE
+	return
+elif [ "$1"x == '-c'x ];then
+	local confirm
+	read -ep "Are you sure you want to clear the cd history?(Y/n)" confirm
+	[[ "$confirm"x != nx && "$confirm"x != Nx ]]&& > $CD_HISTFILE&&return 0||return 1
+	fi
+	local bpath
+	bpath=$($SYSROOT/usr/bin/grep "^$1----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
+	if [ -z $bpath ];then
+	builtin cd "$@"&&echo $OLDPWD >> $CD_HISTFILE
+	cd_deldups
+else 
+	builtin cd "$bpath"
+	fi
+}
+function uncd(){
+	local uncd
+	[ ! -s $CD_HISTFILE ]&&echo "cd history is empty!"&&return 1
+	uncd=$(tail -n 1 $CD_HISTFILE)
+	echo "will cd to $uncd"
+	builtin cd $uncd
+	sed -i '$d' $CD_HISTFILE
+}
+complete -o default -o nospace -F _comp_bydbash_cd cd
 ###完事嗷
