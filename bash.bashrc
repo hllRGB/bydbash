@@ -447,6 +447,15 @@ elif [ "$1"x == '-c'x ];then
 else 
 	builtin cd "$bpath"
 	fi
+	if [ "$1"x == --helpx ];then
+		echo "    bydbash cd options:"
+		echo "      -l		print cd history"
+		echo "      -c		clear cd history (will ask once)"
+		echo -e "      -s		search cd history by grep\n"
+		echo "    Each time you executed cd (include bash autocd),the variable $OLDPWD will be appended"
+		echo "    to file $CD_HISTFILE."
+		echo -e "\nYou can cd back to the last history record by bydbash command "uncd".It will cd to \nthe last path in $CD_HISTFILE and then delete it (the path)."
+	fi
 }
 function uncd(){
 	local uncd
