@@ -442,7 +442,7 @@ else
 	builtin cd "$bpath"
 	fi
 	if [ "$1"x == --helpx ];then
-		echo "    bydbash cd options:"
+		echo -e "\n\n    bydbash cd options:"
 		echo "      -l		print cd history"
 		echo "      -c		clear cd history (will ask once)"
 		echo -e "      -s		search cd history by grep\n"
