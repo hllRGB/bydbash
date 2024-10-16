@@ -64,12 +64,15 @@ complete -E
 complete -E -F _comp_complete_longopt
 #这给命令计时用的
 timing(){
-        if [ "$1" == pre ];then
-[ $in_init == 1 ]&&return
-    start_time=$(date +%s%N)
-    in_timing="yes"
-elif [ "$1" == post ];then
-    local end_time=$(date +%s%N)
+	if [ "$1" == pre ];then
+		[ $in_init -eq 1 ]&&return
+		start_time="$(date +%s%N)"
+		in_timing=yes
+	elif [ "$1" == post ];then
+		end_time="$(date +%s%N)"
+	fi
+}
+timing_post(){
     local elapsed_time_ns=$((end_time - start_time))
         local command_to_execute=$(history 1 | sed 's/^ *[0-9]\+ *//')
         local elapsed_time_sec=$(echo "scale=2; $elapsed_time_ns / 1000000000" | bc)
@@ -83,11 +86,11 @@ elif [ "$1" == post ];then
         fi
         echo -En "$command_to_execute: ${elapsed_time_sec} s"
 	echo -e "\033[m"
-    unset start_time
+    #unset start_time
+    #unset end_time
     unset in_timing
     post_histsize=$pre_histsize
     unset pre_histsize
-        fi
 }
 ###辅助命令计时器的
 deldups(){
@@ -111,11 +114,12 @@ pre_exec(){
 ###命令执行之后由PROMPT_COMMAND触发
 post_exec(){
 ret=$?
+timing post
 history -a
 deldups
 if [ $in_init == 0 ];then
         pre_histsize=$(stat -c%s $HISTFILE)
-        timing post
+        timing_post
 fi
 time1=$(date +%T|awk -F":" {'print $1":"$2'})
 time2=$(date +%T|awk -F":" {'print $3'})
@@ -404,7 +408,7 @@ _comp_bydbash_cd() {
     local cur prev opts
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
-        _comp_complete_longopt
+        _comp_cmd_cd
 	COMPREPLY+=($(compgen -W "$waiting_to_complete" -- $cur))
 	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
 }
@@ -455,5 +459,6 @@ function uncd(){
 	builtin cd $uncd
 	sed -i '$d' $CD_HISTFILE
 }
+_cd
 complete -o default -o nospace -F _comp_bydbash_cd cd
 ###完事嗷
