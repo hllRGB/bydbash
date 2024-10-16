@@ -86,8 +86,8 @@ timing_post(){
         fi
         echo -En "$command_to_execute: ${elapsed_time_sec} s"
 	echo -e "\033[m"
-    #unset start_time
-    #unset end_time
+    unset start_time
+    unset end_time
     unset in_timing
     post_histsize=$pre_histsize
     unset pre_histsize
