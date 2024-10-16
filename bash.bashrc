@@ -459,6 +459,6 @@ function uncd(){
 	builtin cd $uncd
 	sed -i '$d' $CD_HISTFILE
 }
-_cd
+_cd  ##这个地方...好像不执行这个命令那么_comp_cmd_cd这个函数不会出来...
 complete -o default -o nospace -F _comp_bydbash_cd cd
 ###完事嗷
