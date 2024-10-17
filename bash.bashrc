@@ -411,6 +411,7 @@ _comp_bydbash_cd() {
         _comp_cmd_cd
 	COMPREPLY+=($(compgen -W "$waiting_to_complete" -- $cur))
 	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
+	COMPREPLY+=($([ -z $cur ]&&$SYSROOT/usr/bin/cat $CD_HISTFILE||$SYSROOT/usr/bin/cat $CD_HISTFILE| grep $cur))
 }
 
 complete -o default -o nospace -F _comp_bydbash_bydpath byd
