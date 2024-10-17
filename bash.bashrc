@@ -189,16 +189,11 @@ HISTFILESIZE=200000
 [ -x $SYSROOT/usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
 PROMPT_COMMAND=post_exec
 ###命令找不到就调用这个(这是bash内建的小功能,debian的bashrc好像就自带这个)
-command_not_found_handle(){
-        cmdnotfound $1
-}
 ### 不同发行版有不同的搜索工具,这里只写了俩,需要的自己改 ###
-cmdnotfound(){
 if [ -x $SYSROOT/usr/bin/pkgfile ];then
-        echo "Searching command $1 ..."
-        $SYSROOT/usr/bin/pkgfile $1
-elif [ -x $SYSROOT/usr/lib/command-not-found ];then
-        $SYSROOT/usr/lib/command-not-found -- "$1"
+	/usr/share/doc/pkgfile/command-not-found.bash
+elif [ -x $SYSROOT/usr/share/command-not-found/command-not-found ];then
+	/usr/share/command-not-found/command-not-found $1||(echo bash: $1: command not found&&return 127)
 else
         echo "command pkgfile not found,cant search the command."
         echo "you can install extra/pkgfile with sudo pacman -Sy pkgfile."
@@ -411,9 +406,15 @@ _comp_bydbash_cd() {
         _comp_cmd_cd
 	COMPREPLY+=($(compgen -W "$waiting_to_complete" -- $cur))
 	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
-	COMPREPLY+=($([ -z $cur ]&&$SYSROOT/usr/bin/cat $CD_HISTFILE||$SYSROOT/usr/bin/cat $CD_HISTFILE| grep $cur))
 }
-
+_comp_bydbash_cdhist(){
+	local waiting2comp
+	waiting2comp=$(cat $CD_HISTFILE)
+	local cur
+	COMPREPLY=()
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	COMPREPLY=($([ -z $cur ]&&echo -n $waiting2comp||echo -n $waiting2comp | grep $cur))
+}
 complete -o default -o nospace -F _comp_bydbash_bydpath byd
 #超级cd
 cd_deldups(){
@@ -422,6 +423,9 @@ cd_deldups(){
         if [ "$first_cmd"x == "$sec_cmd"x ];then
                 sed -i '$d' $CD_HISTFILE
         fi
+}
+function cdhist(){
+	builtin cd $@
 }
 function cd(){
 	if [ "$1"x == '-s'x ];then
@@ -462,4 +466,5 @@ function uncd(){
 }
 _cd  ##这个地方...好像不执行这个命令那么_comp_cmd_cd这个函数不会出来...
 complete -o default -o nospace -F _comp_bydbash_cd cd
+complete -o default -o nospace -F _comp_bydbash_cdhist cdhist
 ###完事嗷
