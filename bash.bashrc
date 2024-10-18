@@ -276,7 +276,7 @@ fi
 savepath() {
     local path
     local input="$1"
-    [ "$input"x == "--help"x ]&&echo 'Usage:savepath [path] [bpathnumber (bpath*)]'
+    [ "$input"x == "--help"x ]&&echo -e "Usage:savepath [path] [bpathnumber (bpath*)]\n\nThis function is provided to save a file or a path to a shared file.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."&&return
     if ls $input -d >/dev/null 2>&1; then
     if [ -z "$input" ]; then
             echo "No path entered.will save current directory(pwd)."
@@ -296,8 +296,8 @@ else
 }
 ###删除绝对路径的保存
 rmpath() {
-    if [ $# -eq 0 ]; then
-        echo "Usage: rmpath [bpathnumber ...]"
+    if [ $# -eq 0 ]|| [ "$1"x == --helpx ]; then
+        echo -e "Usage: rmpath [bpathnumber ...]\n\nThis function is to remove a saved path.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."
         return 1
     fi
 	
@@ -312,6 +312,7 @@ else
 }
 ###列出保存的路径
 lspath() {
+    [ "$1"x == --helpx ]&&echo -e "Usage:lspath\nThis function is provided to list saved path is the shared file.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number.]\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."
     if [ ! -s "$PATHS_SAVE_FILE" ]; then
         return 1
     fi
@@ -324,8 +325,8 @@ byd() {
     local args=()
     local bpath_args=()
     if [ "$cmd"awa == awa ]; then
-            echo "Usage: byd [command] [command-args]"
-            return 1
+            echo -e "Usage: byd [command] [command-args]\n\nThis function is to make bpath is supported in normal commands.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."
+            return
     fi
     for arg in "$@"; do
         if [[ "$arg" =~ ^bpath[0-9]+$ ]]; then
@@ -372,7 +373,7 @@ complete -o default -o nospace -F _comp_complete_longopt savepath
 ###路径小工具的补全
 _comp_bydbash_lspath(){
     local waiting_to_complete
-    waiting_to_complete=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
+    waiting_to_complete=$(echo -n "--help ";lspath>/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
     local ref=$?
     if [ $ref -ne 1 ];then
 	cur="${COMP_WORDS[COMP_CWORD]}"
@@ -383,6 +384,7 @@ else
 }
 ###清空保存的路径
 clpath(){
+	[ "$1"x == --helpx ]&&echo -e "Usage:clpath\n\nThis function is provided for clear saved paths.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash.";return
         > "$PATHS_SAVE_FILE"
         echo "Paths cleared."
 }
@@ -414,36 +416,49 @@ _comp_bydbash_cdhist(){
 	local cur
 	COMPREPLY=()
 	cur="${COMP_WORDS[COMP_CWORD]}"
-	COMPREPLY=($([ -z $cur ]&&echo -n $waiting2comp||echo -n $waiting2comp | grep $cur))
+	[ -z $cur ]&&COMPREPLY=($(echo -n $waiting2comp))||COMPREPLY=($(compgen -W "$waiting2comp" -- $cur))
+
 }
 complete -o default -o nospace -F _comp_bydbash_bydpath byd
 #超级cd
 cd_deldups(){
-        local first_cmd=$(tail -n 1 $CD_HISTFILE)
-        local sec_cmd=$(tail -n 2 $CD_HISTFILE|sed '$d')
+        local first_cmd=$(tail -n 1 $1)
+        local sec_cmd=$(tail -n 2 $1|sed '$d')
         if [ "$first_cmd"x == "$sec_cmd"x ];then
                 sed -i '$d' $CD_HISTFILE
         fi
 }
 function cdhist(){
-	builtin cd $@
-}
-function cd(){
+	local confirm
 	if [ "$1"x == '-s'x ];then
 	[ -z "$2" ]&&echo "Needs at least one char to search!"&&return 1||cat $CD_HISTFILE | grep "$@";return
-	elif [ "$1"x == '-l'x ];then
-		cat $CD_HISTFILE
+elif [ "$1"x == '-lx' ];then
+	[ -s $CD_HISTFILE ]&&cat $CD_HISTFILE||echo "cd history file is empty."
+	return
+elif [ "$1"x == '--helpx' ];then 
+	echo -e "Usage: cdhist [args] dir\n\nOptions:\n    -s    search lines in $CD_HISTFILE\n    -l    list lines in $CD_HISTFILE\n\nProvided by bydbash.";return
+elif [ "$1"x == -cx ];then
+	read -ep "Are you sure you want to clear the cd history?(Y/n)" confirm
+	[[ "$confirm"x != nx && "$confirm"x != Nx ]]&& > $CD_HISTFILE&&return 0||return 1
+	fi
+
+builtin cd $@
+}
+function cd(){
+		if [ "$1"x == '-l'x ];then
+		[ -s $RAMFS_DIR/"cdstack_$$" ]&&cat $RAMFS_DIR/"cdstack_$$"||echo "cd stack is empty!"
 	return
 elif [ "$1"x == '-c'x ];then
 	local confirm
-	read -ep "Are you sure you want to clear the cd history?(Y/n)" confirm
-	[[ "$confirm"x != nx && "$confirm"x != Nx ]]&& > $CD_HISTFILE&&return 0||return 1
+	read -ep "Are you sure you want to clear the cd stack?(Y/n)" confirm
+	[[ "$confirm"x != nx && "$confirm"x != Nx ]]&& > $RAMFS_DIR/"cdstack_$$"&&return 0||return 1
 	fi
 	local bpath
 	bpath=$($SYSROOT/usr/bin/grep "^$1----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
 	if [ -z $bpath ];then
-	builtin cd "$@"&&echo $OLDPWD >> $CD_HISTFILE
-	cd_deldups
+	builtin cd "$@"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo $PWD >> $CD_HISTFILE
+	cd_deldups "$CD_HISTFILE"
+	[ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
 else 
 	builtin cd "$bpath"
 	fi
@@ -454,17 +469,19 @@ else
 		echo -e "      -s		search cd history by grep\n"
 		echo "    Each time you executed cd (include bash autocd),the variable $OLDPWD will be appended"
 		echo "    to file $CD_HISTFILE."
-		echo -e "\nYou can cd back to the last history record by bydbash command "uncd".It will cd to \nthe last path in $CD_HISTFILE and then delete it (the path)."
+		echo -e "\nYou can cd back to the last history record by bydbash command "uncd".It will cd to \nthe last path in $RAMFS_DIR/"cdstack_$$" and then delete it (the path).\n\nProvided by bydbash."
 	fi
 }
 function uncd(){
+	[ "$1"x == "--helpx" ]&&echo -e "Usage:uncd\n\nThis function is provided to realize the undo function on cd.\ncd history will be saved in both $RAMFS_DIR/"cdstack_$$" and $CD_HISTFILE.Use cd -c to clear the cd stack,use cdhist -c to clear the cd history.\n\nProvided by bydbash."&&return
 	local uncd
-	[ ! -s $CD_HISTFILE ]&&echo "cd history is empty!"&&return 1
-	uncd=$(tail -n 1 $CD_HISTFILE)
+	[ ! -s $RAMFS_DIR/"cdstack_$$" ]&&echo "cd stack is empty!"&&return 1
+	uncd=$(tail -n 1 $RAMFS_DIR/"cdstack_$$")
 	echo "will cd to $uncd"
 	builtin cd $uncd
-	sed -i '$d' $CD_HISTFILE
+	sed -i '$d' $RAMFS_DIR/"cdstack_$$"
 }
+trap "rm $RAMFS_DIR/cdstack_$$" EXIT
 _cd  ##这个地方...好像不执行这个命令那么_comp_cmd_cd这个函数不会出来...
 complete -o default -o nospace -F _comp_bydbash_cd cd
 complete -o default -o nospace -F _comp_bydbash_cdhist cdhist
