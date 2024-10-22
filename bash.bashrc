@@ -367,7 +367,7 @@ byd() {
         fi
 	unset confirm
     fi
-    "$cmd" "${args[@]}"
+    eval "$cmd ${args[@]}"
 }
 complete -o default -o nospace -F _comp_complete_longopt savepath
 ###路径小工具的补全
@@ -384,7 +384,7 @@ else
 }
 ###清空保存的路径
 clpath(){
-	[ "$1"x == --helpx ]&&echo -e "Usage:clpath\n\nThis function is provided for clear saved paths.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash.";return
+	[ "$1"x == --helpx ]&&echo -e "Usage:clpath\n\nThis function is provided for clear saved paths.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."&&return
         > "$PATHS_SAVE_FILE"
         echo "Paths cleared."
 }
@@ -431,12 +431,12 @@ cd_deldups(){
 function cdhist(){
 	local confirm
 	if [ "$1"x == '-s'x ];then
-	[ -z "$2" ]&&echo "Needs at least one char to search!"&&return 1||cat $CD_HISTFILE | grep "$@";return
+	[ -z "$2" ]&&echo "Needs at least one char to search!"&&return 1||cat $CD_HISTFILE | grep "$@"&&return
 elif [ "$1"x == '-lx' ];then
 	[ -s $CD_HISTFILE ]&&cat $CD_HISTFILE||echo "cd history file is empty."
 	return
 elif [ "$1"x == '--helpx' ];then 
-	echo -e "Usage: cdhist [args] dir\n\nOptions:\n    -s    search lines in $CD_HISTFILE\n    -l    list lines in $CD_HISTFILE\n\nProvided by bydbash.";return
+	echo -e "Usage: cdhist [args] dir\n\nOptions:\n    -s    search lines in $CD_HISTFILE\n    -l    list lines in $CD_HISTFILE\n    -c    clear the cd history(will ask once)\n\nProvided by bydbash."&&return
 elif [ "$1"x == -cx ];then
 	read -ep "Are you sure you want to clear the cd history?(Y/n)" confirm
 	[[ "$confirm"x != nx && "$confirm"x != Nx ]]&& > $CD_HISTFILE&&return 0||return 1
@@ -464,9 +464,9 @@ else
 	fi
 	if [ "$1"x == --helpx ];then
 		echo -e "\n\n    bydbash cd options:"
-		echo "      -l		print cd history"
-		echo "      -c		clear cd history (will ask once)"
-		echo -e "      -s		search cd history by grep\n"
+		echo "      -l		print cd stack"
+		echo "      -c		clear cd stack (will ask once)"
+		echo -e "\n"
 		echo "    Each time you executed cd (include bash autocd),the variable $OLDPWD will be appended"
 		echo "    to file $CD_HISTFILE."
 		echo -e "\nYou can cd back to the last history record by bydbash command "uncd".It will cd to \nthe last path in $RAMFS_DIR/"cdstack_$$" and then delete it (the path).\n\nProvided by bydbash."
@@ -481,7 +481,7 @@ function uncd(){
 	builtin cd $uncd
 	sed -i '$d' $RAMFS_DIR/"cdstack_$$"
 }
-trap "rm $RAMFS_DIR/cdstack_$$" EXIT
+trap "[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$" EXIT
 _cd  ##这个地方...好像不执行这个命令那么_comp_cmd_cd这个函数不会出来...
 complete -o default -o nospace -F _comp_bydbash_cd cd
 complete -o default -o nospace -F _comp_bydbash_cdhist cdhist
