@@ -191,10 +191,10 @@ PROMPT_COMMAND=post_exec
 ###命令找不到就调用这个(这是bash内建的小功能,debian的bashrc好像就自带这个)
 ### 不同发行版有不同的搜索工具,这里只写了俩,需要的自己改 ###
 if [ -x $SYSROOT/usr/bin/pkgfile ];then
-	. /usr/share/doc/pkgfile/command-not-found.bash
+	. $SYSROOT/usr/share/doc/pkgfile/command-not-found.bash
 elif [ -x $SYSROOT/usr/share/command-not-found/command-not-found ];then
 	function command_not_found_handle(){
-		/usr/share/command-not-found/command-not-found $1||(echo bash: $1: command not found&&return 127)
+		$SYSROOT/usr/share/command-not-found/command-not-found $1||(echo bash: $1: command not found&&return 127)
 	}
 else
         echo "command pkgfile not found,cant search the command."
