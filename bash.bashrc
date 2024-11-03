@@ -485,4 +485,5 @@ trap "[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$" EXIT
 _cd  ##这个地方...好像不执行这个命令那么_comp_cmd_cd这个函数不会出来...
 complete -o default -o nospace -F _comp_bydbash_cd cd
 complete -o default -o nospace -F _comp_bydbash_cdhist cdhist
+source $HOME/.bashrc
 ###完事嗷
