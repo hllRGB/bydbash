@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/data/data/com.termux/files/usr/bin/bash
 # ~/.bashrc: executed by bash(1) for non-login shells.
 # see $SYSROOT/usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 ### BASHRC 配置 ###
@@ -412,10 +412,10 @@ _comp_bydbash_cd() {
 }
 _comp_bydbash_cdhist(){
 	local waiting2comp
-	waiting2comp=$(cat $CD_HISTFILE)
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	waiting2comp=$(cat $CD_HISTFILE | grep $cur)
 	local cur
 	COMPREPLY=()
-	cur="${COMP_WORDS[COMP_CWORD]}"
 	[ -z $cur ]&&COMPREPLY=($(echo -n $waiting2comp))||COMPREPLY=($(compgen -W "$waiting2comp" -- $cur))
 
 }
