@@ -1,4 +1,4 @@
-#!$SYSROOT/bin/bash
+#!/bin/bash
 # ~/.bashrc: executed by bash(1) for non-login shells.
 # see $SYSROOT/usr/share/doc/bash/examples/startup-files (in the package bash-doc)
 ### BASHRC 配置 ###
