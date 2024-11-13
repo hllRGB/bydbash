@@ -478,7 +478,7 @@ function uncd(){
 	[ ! -s $RAMFS_DIR/"cdstack_$$" ]&&echo "cd stack is empty!"&&return 1
 	uncd=$(tail -n 1 $RAMFS_DIR/"cdstack_$$")
 	echo "will cd to $uncd"
-	builtin cd $uncd
+	eval "$(echo "builtin cd '$uncd'")"
 	sed -i '$d' $RAMFS_DIR/"cdstack_$$"
 }
 trap "[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$" EXIT
