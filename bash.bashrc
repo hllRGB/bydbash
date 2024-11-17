@@ -61,7 +61,6 @@ bind 'set colored-completion-prefix on'
 complete -F _comp_command sudo
 complete -F _comp_command _
 complete -E
-complete -E -F _comp_complete_longopt
 #这给命令计时用的
 timing(){
 	if [ "$1" == pre ];then
@@ -481,9 +480,51 @@ function uncd(){
 	eval "$(echo "builtin cd '$uncd'")"
 	sed -i '$d' $RAMFS_DIR/"cdstack_$$"
 }
+_comp_bydbash_general ()
+{
+    _comp_complete_longopt
+    local cur prev words cword comp_args;
+    _comp_initialize -- "$@" || return;
+    if [[ $cur == -* ]]; then
+        _comp_compgen_help -c help "$1";
+        compopt +o nospace;
+        return;
+    fi;
+    local i j k;
+    compopt -o filenames;
+    if [[ ! -n ${CDPATH-} || $cur == ?(.)?(.)/* ]]; then
+        _comp_compgen_filedir -d;
+        return;
+    fi;
+    local mark_dirs="" mark_symdirs="";
+    _comp_readline_variable_on mark-directories && mark_dirs=set;
+    _comp_readline_variable_on mark-symlinked-directories && mark_symdirs=set;
+    local paths dirs;
+    _comp_split -F : paths "$CDPATH";
+    for i in "${paths[@]}";
+    do
+        k=${#COMPREPLY[@]};
+        _comp_compgen -v dirs -c "$i/$cur" -- -d;
+        for j in "${dirs[@]}";
+        do
+            if [[ ( -n $mark_symdirs && -L $j || -n $mark_dirs && ! -L $j ) && ! -d ${j#"$i/"} ]]; then
+                j+="/";
+            fi;
+            COMPREPLY[k++]+=${j#"$i/"};
+        done;
+    done;
+    _comp_compgen -a filedir -d;
+    if ((${#COMPREPLY[@]} == 1)); then
+        i=${COMPREPLY[0]};
+        if [[ $i == "$cur" && $i != "*/" ]]; then
+            COMPREPLY[0]+="${i}/";
+        fi;
+    fi
+}
 trap "[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$" EXIT
+complete -E -F _comp_bydbash_general
 _cd  ##这个地方...好像不执行这个命令那么_comp_cmd_cd这个函数不会出来...
 complete -o default -o nospace -F _comp_bydbash_cd cd
 complete -o default -o nospace -F _comp_bydbash_cdhist cdhist
-[ -f $HOME/.bashrc ]&&source $HOME/.bashrc
+[ -f $HOME/.bashrc ]&&source $HOME/.bashrc||true
 ###完事嗷
