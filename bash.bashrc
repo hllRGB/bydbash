@@ -423,7 +423,7 @@ local new_completions=()
     local cur prev opts
     cur="${COMP_WORDS[COMP_CWORD]}"
     _get_comp_words_by_ref cur prev words cword
-    if getopt -o h -- "$prev"  2>/dev/null|| getopt -o h -- "$prev" | grep -- -h 2>/dev/null;then
+    if getopt -o h -- "$prev"  2>/dev/null|| getopt -o h -- "$prev" | grep -- -h 2>/dev/null >&2;then
     local do_histcomp=set
     fi
         COMPREPLY+=($(compgen -W "$bpathcomp" -- $cur))
