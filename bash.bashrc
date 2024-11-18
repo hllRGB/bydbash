@@ -407,13 +407,10 @@ compopt -o dirnames
 local new_completions=()
     local item
     for item in "${COMPREPLY[@]}"; do
-        if [[ $item == *['#@ *?[];|&$\\]*' ]]; then
+        if [[ $item == *['#@ *?[];|&$\']* ]]; then
             item="'"${item//\'/\'\\\'\'}"'"
         fi
-        if [[ -d $item ]]; then
-            item="$item/"
-        fi
-        new_completions+=($item)
+        new_completions+=("$item/")
     done
     COMPREPLY=("${new_completions[@]}")
 ###done
@@ -423,7 +420,7 @@ local new_completions=()
     local cur prev opts
     cur="${COMP_WORDS[COMP_CWORD]}"
     _get_comp_words_by_ref cur prev words cword
-    if getopt -o h -- "$prev"  >/dev/null 2>&1|| getopt -o h -- "$prev" 2>/dev/null| grep -- -h 2>/dev/null >&2;then
+    if getopt -o h -- "$prev"  >/dev/null 2>&1  && getopt -o h -- "$prev" 2>/dev/null| grep -- -h 2>/dev/null >&2;then
     local do_histcomp=set
     fi
         COMPREPLY+=($(compgen -W "$bpathcomp" -- $cur))
@@ -435,6 +432,7 @@ local new_completions=()
 	histcomp="$(cat $CD_HISTFILE | grep $cur)"
 	COMPREPLY+=($histcomp)
 	fi
+	unset do_histcomp
 	###done
 }
 complete -o default -o nospace -F _comp_bydbash_bydpath byd
