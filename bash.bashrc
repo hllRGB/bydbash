@@ -426,7 +426,6 @@ local new_completions=()
     if getopts -o lschLPe@ --long help -- '${COMP_WORDS[prevind]}' 2>/dev/null| grep -- '-h' >/dev/null 2>&1;then
 	    local do_histcomp=set
     fi
-    local do_histcomp=set
         COMPREPLY+=($(compgen -W "$bpathcomp" -- $cur))
         COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
 	###done
