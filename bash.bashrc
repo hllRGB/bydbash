@@ -399,24 +399,44 @@ _comp_bydbash_bydpath() {
 	COMPREPLY+=($(compgen -W "$waiting_to_complete" -- $cur))
 	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
 }
-_comp_bydbash_cd() {    
-	local waiting_to_complete
-    waiting_to_complete=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
+function _comp_bydbash_cd(){
+	###原版cd补全
+_comp_cmd_cd
+compopt +o filenames
+compopt -o dirnames
+local new_completions=()
+    local item
+    for item in "${COMPREPLY[@]}"; do
+        if [[ $item == *['#@ *?[];|&$\\]*' ]]; then
+            item="'"${item//\'/\'\\\'\'}"'"
+        fi
+        if [[ -d $item ]]; then
+            item="$item/"
+        fi
+        new_completions+=($item)
+    done
+    COMPREPLY=("${new_completions[@]}")
+###done
+### 对bpath的支持
+	local bpathcomp
+    bpathcomp=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
     local cur prev opts
-    COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
-        _comp_cmd_cd
-	COMPREPLY+=($(compgen -W "$waiting_to_complete" -- $cur))
-	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
-}
-_comp_bydbash_cdhist(){
-	local waiting2comp
-	cur="${COMP_WORDS[COMP_CWORD]}"
-	waiting2comp=$(cat $CD_HISTFILE | grep $cur)
-	local cur
-	COMPREPLY=()
-	[ -z $cur ]&&COMPREPLY=($(echo -n $waiting2comp))||COMPREPLY=($(compgen -W "$waiting2comp" -- $cur))
-
+    prevind=$((COMP_CWORD - 1))
+    if getopts -o lschLPe@ --long help -- '${COMP_WORDS[prevind]}' 2>/dev/null| grep -- '-h' >/dev/null 2>&1;then
+	    local do_histcomp=set
+    fi
+    local do_histcomp=set
+        COMPREPLY+=($(compgen -W "$bpathcomp" -- $cur))
+        COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
+	###done
+	###历史记录的补全
+	local histcomp
+	if [[ "$do_histcomp"x = "set"x ]]&&[ ! -z $cur ];then
+	histcomp="$(cat $CD_HISTFILE | grep $cur)"
+	COMPREPLY+=($histcomp)
+	fi
+	###done
 }
 complete -o default -o nospace -F _comp_bydbash_bydpath byd
 #超级cd
@@ -427,49 +447,71 @@ cd_deldups(){
                 sed -i '$d' $CD_HISTFILE
         fi
 }
-function cdhist(){
-	local confirm
-	if [ "$1"x == '-s'x ];then
-	[ -z "$2" ]&&echo "Needs at least one char to search!"&&return 1||cat $CD_HISTFILE | grep "$@"&&return
-elif [ "$1"x == '-lx' ];then
-	[ -s $CD_HISTFILE ]&&cat $CD_HISTFILE||echo "cd history file is empty."
-	return
-elif [ "$1"x == '--helpx' ];then 
-	echo -e "Usage: cdhist [args] dir\n\nOptions:\n    -s    search lines in $CD_HISTFILE\n    -l    list lines in $CD_HISTFILE\n    -c    clear the cd history(will ask once)\n\nProvided by bydbash."&&return
-elif [ "$1"x == -cx ];then
-	read -ep "Are you sure you want to clear the cd history?(Y/n)" confirm
-	[[ "$confirm"x != nx && "$confirm"x != Nx ]]&& > $CD_HISTFILE&&return 0||return 1
-	fi
-
-builtin cd $@
-}
 function cd(){
-		if [ "$1"x == '-l'x ];then
-		[ -s $RAMFS_DIR/"cdstack_$$" ]&&cat $RAMFS_DIR/"cdstack_$$"||echo "cd stack is empty!"
-	return
-elif [ "$1"x == '-c'x ];then
-	local confirm
-	read -ep "Are you sure you want to clear the cd stack?(Y/n)" confirm
-	[[ "$confirm"x != nx && "$confirm"x != Nx ]]&& > $RAMFS_DIR/"cdstack_$$"&&return 0||return 1
+	local bcd_OPTS=$(getopt -o lchsLPe@ --long help -n 'cd' -- "$@")
+	if [ $? != 0 ];then echo "Please check if you gave invalid options." >&2 ; return 1 ;fi
+	eval set -- "$bcd_OPTS"
+	local bcd_history_mode=0 
+	local bcd_list=0 
+	local bcd_search=0 
+	local bcd_clear=0 
+	local bcd_help=0
+	local bcd_builtin_cd=0
+	local bcd_builtin_opt='-'
+	while true; do
+		case "$1" in
+			-h ) local bcd_history_mode=1; shift ;;
+			-l ) local bcd_list=1;shift;;
+			-s ) local bcd_search=1;shift;;
+			-c ) local bcd_clear=1;shift;;
+			--help ) local bcd_help=1;shift ;;
+			-L ) local bcd_builtin_cd=1;bcd_builtin_opt+="L";shift ;;
+			-P ) local bcd_builtin_cd=1;bcd_builtin_opt+="P";shift;;
+			-e ) local bcd_builtin_cd=1;bcd_builtin_opt+="e";shift;;
+			-@ ) local bcd_builtin_cd=1;bcd_builtin_opt+="@";shift;;
+			-- ) shift; break ;;
+			* ) break ;;
+		esac
+	done
+	[ $bcd_builtin_opt == '-' ]&&bcd_builtin_opt='--'
+	local bcd_remaining="$@"
+	[ $bcd_help == 1 ]&&echo -e "$(builtin cd --help)\n\n    bydbash cd options:\n	-h	history mode\n	-l	print cd stack/print cd history\n	-c	clear cd stack/clear cd history\n	-s	search in the cd history(only works when -h is specified)\n\n	-LPe@ takes precedence over bydbash cd options.If you specified them,bydbash cd options will not work.\n	-lsc cannot be specified at the same time.\n\n	Each time you executed cd (include bash autocd),the variable $OLDPWD will be appended\n	to file $CD_HISTFILE\n\nYou can cd back to the last history record by bydbash command "uncd".It will cdAMFS_DIR/"cdstack_$$" and then delete it (the path).\n\nSpecify the -h parameter when you want to trigger cd history completion,\n although it has no real effect.\n\nProvided by bydbash."&&return 0
+	local bcd_vars=("bcd_list" "bcd_search" "bcd_clear")
+	local count=0
+	for var in "${bcd_vars[@]}"; do
+		[ "${!var}" -eq 1 ]&&((count++))
+	done
+	[ $count -gt 1 ]&&echo "-l -s -c should not be specified at the same time.">&2&&return 1
+	if [ $bcd_history_mode -eq 0 -a $bcd_builtin_cd -eq 0 ];then
+		if [ $bcd_list -eq 1 ];then
+			[ -s $RAMFS_DIR/"cdstack_$$" ]&&cat $RAMFS_DIR/"cdstack_$$"||echo "cd stack is empty!";return
+		elif [ $bcd_search -eq 1 ];then
+			echo "-s should be spcified only when -h is spcified."
+			return 1
+		elif [ $bcd_clear -eq 1 ];then
+			local confirm;read -ep "Are you sure you want to clear the cd stack?(Y/n)" confirm
+			[[ "$confirm"x != nx && "$confirm"x != Nx ]]&& > $RAMFS_DIR/"cdstack_$$"&&return 0||return 1
+		fi
+	elif [ $bcd_builtin_cd -eq 0 ];then
+		if [ $bcd_list -eq 1 ];then
+			[ -s $CD_HISTFILE ]&&(cat $CD_HISTFILE||echo "cd history file is empty.";return 1)
+		elif [ $bcd_search -eq 1 ];then
+			[ -z "$bcd_remaining" ]&&echo "Needs at least one char to search!"&&return 1||cat $CD_HISTFILE | grep "$bcd_remaining";return
+		elif [ $bcd_clear -eq 1 ];then
+			read -ep "Are you sure you want to clear the cd history?(Y/n)" confirm
+			[[ "$confirm"x != nx && "$confirm"x != Nx ]]&& > $CD_HISTFILE&&return 0||return 1
+		fi
 	fi
+	[ ! -z $bcd_remaining ]&&bcd_remaining="'$bcd_remaining'"
 	local bpath
 	bpath=$($SYSROOT/usr/bin/grep "^$1----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
-	if [ -z $bpath ];then
-	builtin cd "$@"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo $PWD >> $CD_HISTFILE
-	cd_deldups "$CD_HISTFILE"
-	[ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
+        if [ -z $bpath ];then
+        eval "builtin cd $bcd_builtin_opt $bcd_remaining"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo $PWD >> $CD_HISTFILE
+        cd_deldups "$CD_HISTFILE"
+        [ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
 else 
-	builtin cd "$bpath"
-	fi
-	if [ "$1"x == --helpx ];then
-		echo -e "\n\n    bydbash cd options:"
-		echo "      -l		print cd stack"
-		echo "      -c		clear cd stack (will ask once)"
-		echo -e "\n"
-		echo "    Each time you executed cd (include bash autocd),the variable $OLDPWD will be appended"
-		echo "    to file $CD_HISTFILE."
-		echo -e "\nYou can cd back to the last history record by bydbash command "uncd".It will cd to \nthe last path in $RAMFS_DIR/"cdstack_$$" and then delete it (the path).\n\nProvided by bydbash."
-	fi
+        eval "builtin cd $bcd_builtin_opt '$bpath'"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo $PWD >> $CD_HISTFILE
+        fi
 }
 function uncd(){
 	[ "$1"x == "--helpx" ]&&echo -e "Usage:uncd\n\nThis function is provided to realize the undo function on cd.\ncd history will be saved in both $RAMFS_DIR/"cdstack_$$" and $CD_HISTFILE.Use cd -c to clear the cd stack,use cdhist -c to clear the cd history.\n\nProvided by bydbash."&&return
@@ -480,51 +522,9 @@ function uncd(){
 	eval "$(echo "builtin cd '$uncd'")"
 	sed -i '$d' $RAMFS_DIR/"cdstack_$$"
 }
-_comp_bydbash_general ()
-{
-    _comp_complete_longopt
-    local cur prev words cword comp_args;
-    _comp_initialize -- "$@" || return;
-    if [[ $cur == -* ]]; then
-        _comp_compgen_help -c help "$1";
-        compopt +o nospace;
-        return;
-    fi;
-    local i j k;
-    compopt -o filenames;
-    if [[ ! -n ${CDPATH-} || $cur == ?(.)?(.)/* ]]; then
-        _comp_compgen_filedir -d;
-        return;
-    fi;
-    local mark_dirs="" mark_symdirs="";
-    _comp_readline_variable_on mark-directories && mark_dirs=set;
-    _comp_readline_variable_on mark-symlinked-directories && mark_symdirs=set;
-    local paths dirs;
-    _comp_split -F : paths "$CDPATH";
-    for i in "${paths[@]}";
-    do
-        k=${#COMPREPLY[@]};
-        _comp_compgen -v dirs -c "$i/$cur" -- -d;
-        for j in "${dirs[@]}";
-        do
-            if [[ ( -n $mark_symdirs && -L $j || -n $mark_dirs && ! -L $j ) && ! -d ${j#"$i/"} ]]; then
-                j+="/";
-            fi;
-            COMPREPLY[k++]+=${j#"$i/"};
-        done;
-    done;
-    _comp_compgen -a filedir -d;
-    if ((${#COMPREPLY[@]} == 1)); then
-        i=${COMPREPLY[0]};
-        if [[ $i == "$cur" && $i != "*/" ]]; then
-            COMPREPLY[0]+="${i}/";
-        fi;
-    fi
-}
 trap "[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$" EXIT
-complete -E -F _comp_bydbash_general
+complete -E -F _comp_complete_longopt
 _cd  ##这个地方...好像不执行这个命令那么_comp_cmd_cd这个函数不会出来...
 complete -o default -o nospace -F _comp_bydbash_cd cd
-complete -o default -o nospace -F _comp_bydbash_cdhist cdhist
 [ -f $HOME/.bashrc ]&&source $HOME/.bashrc||true
 ###完事嗷
