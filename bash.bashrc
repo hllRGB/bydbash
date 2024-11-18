@@ -422,9 +422,9 @@ local new_completions=()
     bpathcomp=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
     local cur prev opts
     cur="${COMP_WORDS[COMP_CWORD]}"
-    prevind=$((COMP_CWORD - 1))
-    if getopts -o lschLPe@ --long help -- '${COMP_WORDS[prevind]}' 2>/dev/null| grep -- '-h' >/dev/null 2>&1;then
-	    local do_histcomp=set
+    _get_comp_words_by_ref cur prev words cword
+    if getopt -o h -- "$prev"  2>/dev/null|| getopt -o h -- "$prev" | grep -- -h 2>/dev/null;then
+    local do_histcomp=set
     fi
         COMPREPLY+=($(compgen -W "$bpathcomp" -- $cur))
         COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
