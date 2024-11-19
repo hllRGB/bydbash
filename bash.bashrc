@@ -404,13 +404,14 @@ function _comp_bydbash_cd(){
 _comp_cmd_cd
 compopt +o filenames
 compopt -o dirnames
+compopt -o plusdirs
 local new_completions=()
     local item
     for item in "${COMPREPLY[@]}"; do
         if [[ $item == *['#@ *?[];|&$\']* ]]; then
-            item="'"${item//\'/\'\\\'\'}"'"
+            item="${item//\'/\'\\\'\'}"
         fi
-        new_completions+=("$item/")
+        new_completions+=("$item")
     done
     COMPREPLY=("${new_completions[@]}")
 ###done
@@ -499,7 +500,7 @@ function cd(){
 			[[ "$confirm"x != nx && "$confirm"x != Nx ]]&& > $CD_HISTFILE&&return 0||return 1
 		fi
 	fi
-	[ ! -z $bcd_remaining ]&&bcd_remaining="'$bcd_remaining'"
+	[ ! -z "$bcd_remaining" ]&&bcd_remaining="'$bcd_remaining'"
 	local bpath
 	bpath=$($SYSROOT/usr/bin/grep "^$1----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
         if [ -z $bpath ];then
