@@ -400,7 +400,35 @@ _comp_bydbash_bydpath() {
 	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
 }
 function _comp_bydbash_cd(){
+### 对bpath的支持
+	local bpathcomp
+    bpathcomp=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
+    local cur prev opts
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    _get_comp_words_by_ref cur prev words cword
+    if getopt -o h -- "$prev"  >/dev/null 2>&1  && getopt -o h -- "$prev" 2>/dev/null| grep -- -h 2>/dev/null >&2;then
+    local do_histcomp=set
+    fi
+        COMPREPLY+=($(compgen -W "$bpathcomp" -- $cur))
+        COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
+	###done
+	if [[ "$do_histcomp"x = "set"x ]]&&[ ! -z $cur ];then
+	###历史记录的补全
+	compopt -o dirnames 
+	compopt -o plusdirs
+	local histcomp
+	local ifs=$IFS
+	local i=0
+	IFS=$'\n'
+	for line in $([ -f $CD_HISTFILE ]&&grep "$cur" "$CD_HISTFILE");do
+		COMPREPLY+=("$line")
+		i=$((i + 1))
+	done
+	IFS=$ifs
+	unset do_histcomp
+	###done
 	###原版cd补全
+else
 _comp_cmd_cd
 compopt +o filenames
 compopt -o dirnames
@@ -415,27 +443,8 @@ local new_completions=()
     done
     COMPREPLY=("${new_completions[@]}")
 ###done
-### 对bpath的支持
-	local bpathcomp
-    bpathcomp=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
-    local cur prev opts
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    _get_comp_words_by_ref cur prev words cword
-    if getopt -o h -- "$prev"  >/dev/null 2>&1  && getopt -o h -- "$prev" 2>/dev/null| grep -- -h 2>/dev/null >&2;then
-    local do_histcomp=set
-    fi
-        COMPREPLY+=($(compgen -W "$bpathcomp" -- $cur))
-        COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
-	###done
-	###历史记录的补全
-	local histcomp
-	if [[ "$do_histcomp"x = "set"x ]]&&[ ! -z $cur ];then
-	histcomp="$(cat $CD_HISTFILE | grep $cur)"
-	COMPREPLY+=($histcomp)
 	fi
-	unset do_histcomp
-	###done
-}
+	}
 complete -o default -o nospace -F _comp_bydbash_bydpath byd
 #超级cd
 cd_deldups(){
@@ -504,11 +513,11 @@ function cd(){
 	local bpath
 	bpath=$($SYSROOT/usr/bin/grep "^$1----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
         if [ -z $bpath ];then
-        eval "builtin cd $bcd_builtin_opt $bcd_remaining"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo $PWD >> $CD_HISTFILE
+        eval "builtin cd $bcd_builtin_opt $bcd_remaining"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
         cd_deldups "$CD_HISTFILE"
         [ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
 else 
-        eval "builtin cd $bcd_builtin_opt '$bpath'"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo $PWD >> $CD_HISTFILE
+        eval "builtin cd $bcd_builtin_opt '$bpath'"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
         fi
 }
 function uncd(){
