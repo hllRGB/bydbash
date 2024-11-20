@@ -18,7 +18,7 @@ CD_HISTFILE=$HOME/.bash_cd_history ### cd历史,便于撤销cd
 # 最好别拿别的shell跑这个
 # 用alias命令查看别名
 # ArchLinux几乎可以开箱即用,别的发行版要改改
-# 脚本有依赖的嗷, pkgfile(搜命令的),bash-completion(补全的),bash(应该不用多说了),ncurses(提供tput),sudo(一些东西要提权用),bc(bashrc用作数据处理),tmux(好东西),git(好东西)
+# 脚本有依赖的嗷, pkgfile(搜命令的),bash-completion(补全的),bash(应该不用多说了),ncurses(提供tput),bc(bashrc用作数据处理),tmux(好东西),git(好东西)
 
 
 
@@ -31,16 +31,16 @@ touch $RAMFS_DIR/hasramfsdir
 fi
 [ ! -f $HISTFILE ]&&touch $HISTFILE
 [ ! -f $CD_HISTFILE ]&&touch $CD_HISTFILE
-bashrc_deps="pkgfile bash-completion bash ncurses sudo bc tmux git"
+bashrc_deps="pkgfile bash-completion bash ncurses bc tmux git"
 if [ -x $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
         echo -n "Its the first time to start bash since boot,checking dependencies..."
         if pacman -Qq $bashrc_deps > /dev/null 2>&1;then
                 touch $RAMFS_DIR/complete_dependency
                 echo -e "\r"
         elif [ -x $SYSROOT/usr/bin/pacman ];then
-                echo -n "These packages are needed.To make sure the bashrc will be executed successfully,you have to install them."
-                sudo pacman -Sy $bashrc_deps --neede --overwrite '*'
-		sudo pkgfile --update
+                echo -n "These packages are needed.To make sure the bashrc will be executed successfully,you have to install them.\n\n$bashrc_deps"
+		type -P sudo&&sudo pacman -Sy $bashrc_deps --neede --overwrite '*'||pacman -Sy $bashrc_deps --neede --overwrite '*'
+		type -P sudo&&sudo pkgfile --update||pkgfile --update
                 echo -e "\r"
         fi
 elif [ ! -f $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
@@ -49,6 +49,7 @@ elif [ ! -f $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ]
         echo "Running bash normally."
         touch $RAMFS_DIR/complete_dependency
 fi
+unset bashrc_deps
 ### 检查好了
 in_init=1
 ###进入init状态
@@ -221,13 +222,13 @@ PS1='\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&$SYSROOT/usr
 PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>'
 PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > '
 PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> '
-if [ $color_prompt = no ];then 
-	PS1='┌─[$0-$$ $(echo -n "$time1:$time2") $(whoami)@\h \w]\[\033[m\]$(git_current_branch no)\n└─$([ $ret = 0 ]||echo -n $ret)\$>>_\[\e[m\] '
-    PS2='[Line $LINENO]> '
-    PS3='\[[$0]Select > '
-    PS4='\[[$0] Line $LINENO:> '
-fi
-unset color_prompt
+#if [ $color_prompt = no ];then 
+#	PS1='┌─[$0-$$ $(echo -n "$time1:$time2") $(whoami)@\h \w]\[\033[m\]$(git_current_branch no)\n└─$([ $ret = 0 ]||echo -n $ret)\$>>_\[\e[m\] '
+#    PS2='[Line $LINENO]> '
+#    PS3='\[[$0]Select > '
+#    PS4='\[[$0] Line $LINENO:> '
+#fi
+#unset color_prompt
 ###一些别名
 if [ -x $SYSROOT/usr/bin/dircolors ]; then
     test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
