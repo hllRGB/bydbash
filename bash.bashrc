@@ -410,9 +410,7 @@ function _comp_bydbash_cd(){
     if getopt -o h -- "$prev"  >/dev/null 2>&1  && getopt -o h -- "$prev" 2>/dev/null| grep -- -h 2>/dev/null >&2;then
     local do_histcomp=set
     fi
-        COMPREPLY+=($(compgen -W "$bpathcomp" -- $cur))
-        COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
-	###done
+        	###done
 	if [[ "$do_histcomp"x = "set"x ]]&&[ ! -z $cur ];then
 	###历史记录的补全
 	compopt -o dirnames 
@@ -444,8 +442,10 @@ local new_completions=()
     done
     COMPREPLY=("${new_completions[@]}")
 ###done
-COMPREPLY+=($bpathcomp)
 	fi
+	COMPREPLY+=($(compgen -W "$bpathcomp" -- $cur))
+        COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
+
 	}
 complete -o default -o nospace -F _comp_bydbash_bydpath byd
 #超级cd
