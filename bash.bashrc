@@ -444,6 +444,7 @@ local new_completions=()
     done
     COMPREPLY=("${new_completions[@]}")
 ###done
+COMPREPLY+=($bpathcomp)
 	fi
 	}
 complete -o default -o nospace -F _comp_bydbash_bydpath byd
@@ -513,7 +514,7 @@ function cd(){
 	[ ! -z "$bcd_remaining" ]&&bcd_remaining="'$bcd_remaining'"
 	local bpath
 	bpath=$($SYSROOT/usr/bin/grep "^$1----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
-        if [ -z $bpath ];then
+        if [ -z "$bpath" ];then
         eval "builtin cd $bcd_builtin_opt $bcd_remaining"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
         cd_deldups "$CD_HISTFILE"
         [ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
