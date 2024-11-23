@@ -515,11 +515,11 @@ function cd(){
 	local bpath
 	bpath=$($SYSROOT/usr/bin/grep "^$1----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
         if [ -z "$bpath" ];then
-        eval "builtin cd $bcd_builtin_opt $bcd_remaining"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
+        eval "builtin cd $bcd_builtin_opt $bcd_remaining";echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" ;echo "$PWD" >> $CD_HISTFILE
         cd_deldups "$CD_HISTFILE"
         [ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
 else 
-        eval "builtin cd $bcd_builtin_opt '$bpath'"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
+        eval "builtin cd $bcd_builtin_opt '$bpath'";echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" ;echo "$PWD" >> $CD_HISTFILE
         fi
 }
 function uncd(){
