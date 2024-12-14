@@ -561,31 +561,31 @@ function loop(){
 	[ -z "$bloop_remaining" ]&&return 0
 	if [ $bloop_dont_exit_when_fail -eq 1 ];then
 		if [ $bloop_enable_times -eq 0 ];then
-			while true;do eval ""$bloop_remaining"";done
+			while true;do eval "$bloop_remaining";done
 		else
 			for (( i=0; i<=$bloop_times; i++));do
-			       	eval ""$bloop_remaining""
+			       	eval "$bloop_remaining"
 			done
 		fi
 	elif [ $bloop_enable_times -eq 0 ];then
 		while true;do 
-			eval ""$bloop_remaining""
+			eval "$bloop_remaining"
 			local returning=$?
 			if [ $returning -ne 0 ];then 
 				break
 			fi
 		done
-		return $returning
+				return $returning
 	else
 		for ((i=0;i <= $bloop_times;i++))
 		do 
-			eval ""$bloop_remaining""
+			eval "$bloop_remaining"
 			returning=$?
 			if [ $returning -ne 0 ];then
 				break
-				return $returning
 			fi
 		done
+				return $returning
 	fi
 
 }
