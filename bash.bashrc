@@ -532,6 +532,63 @@ function uncd(){
 	eval "$(echo "builtin cd '$uncd'")"
 	sed -i '$d' $RAMFS_DIR/"cdstack_$$"
 }
+function loop(){
+	local bloop_OPTS
+	bloop_OPTS=$(getopt -o ut: --long help -n "$0" -- "$@")
+	if [ $? != 0 ];then echo "Please check if you gave invalid options." >&2;return 1;fi
+	eval set -- "$bloop_OPTS"
+	local bloop_dont_exit_when_fail=0
+	local bloop_enable_times=0
+	local bloop_times=0
+	local bloop_help=0
+	local bloop_remaining=''
+	while true; do
+		case "$1" in
+			-u ) bloop_dont_exit_when_fail=1; shift;;
+			-t ) bloop_enable_times=1
+				bloop_times=$(echo -n $2 | tr -d ' ')
+				if [[ ! "$bloop_times" =~ ^[0-9]+$ ]];then
+					echo "You should give a number after option -t." >&2
+					return 1
+				fi
+				shift 2;;
+			--help ) bloop_help=1;shift;;
+			-- ) shift;break;;
+		esac
+	done
+	bloop_remaining="$@"
+	[ $bloop_help -eq 1 ]&&(echo -ne "Usage: $0 [-u] [-t <times>] [command]\n\n	This function is used to execute a bash command for many times\n	Options:\n		-u don't return when command returned a non-zero value\n		-t <times> execute <command> for <times> times\n	<times> must be a integer.\n\nProvided by bydbash.")&&return 0
+	[ -z "$bloop_remaining" ]&&return 0
+	if [ $bloop_dont_exit_when_fail -eq 1 ];then
+		if [ $bloop_enable_times -eq 0 ];then
+			while true;do eval ""$bloop_remaining"";done
+		else
+			for (( i=0; i<=$bloop_times; i++));do
+			       	eval ""$bloop_remaining""
+			done
+		fi
+	elif [ $bloop_enable_times -eq 0 ];then
+		while true;do 
+			eval ""$bloop_remaining""
+			local returning=$?
+			if [ $returning -ne 0 ];then 
+				break
+			fi
+		done
+		return $returning
+	else
+		for ((i=0;i <= $bloop_times;i++))
+		do 
+			eval ""$bloop_remaining""
+			returning=$?
+			if [ $returning -ne 0 ];then
+				break
+				return $returning
+			fi
+		done
+	fi
+
+}
 trap "[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$" EXIT
 complete -E -F _comp_complete_longopt
 _cd  ##这个地方...好像不执行这个命令那么_comp_cmd_cd这个函数不会出来...
