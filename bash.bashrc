@@ -538,35 +538,30 @@ function loop(){
 	local bloop_enable_times=0
 	local bloop_times=0
 	local bloop_help=0
+	local end_opt=0
 	local bloop_remaining=()
 	for bloop_opt in $bloop_OPTS; do
-		case "$bloop_OPT" in
+		case "$bloop_opt" in
 			-u ) bloop_dont_exit_when_fail=1; shift;;
-			-t ) bloop_enable_times=1
-				bloop_times=$(echo -n $2 | tr -d ' ')
-				if [[ ! "$bloop_times" =~ ^[0-9]+$ ]];then
-					echo "You should give a number after option -t." >&2
-					return 1
-				fi
-				shift 2;;
+			-t ) bloop_enable_times=1;shift 2;;
 			--help ) bloop_help=1;shift;;
-			-- ) shift;break;;
+			-- ) end_opt=1;;
+			* ) [ $end_opt -ne 1 ]&&bloop_times=$(echo -n $bloop_opt|tr -d "'")||bloop_remaining+=($bloop_opt);;
 		esac
 	done
-	bloop_remaining="$@"
 	[ $bloop_help -eq 1 ]&&(echo -ne "Usage: loop [-u] [-t <times>] [command]\n\n	This function is used to execute a bash command for many times\n	Options:\n		-u don't return when command returned a non-zero value\n		-t <times> execute <command> for <times> times\n	<times> must be a integer.\n\nProvided by bydbash.")&&return 0
-	[ -z "$bloop_remaining" ]&&return 0
+	[ -z "$(echo ${bloop_remaining[@]})" ]&&return 0
 	if [ $bloop_dont_exit_when_fail -eq 1 ];then
 		if [ $bloop_enable_times -eq 0 ];then
-			while true;do eval "$bloop_remaining";done
+			while true;do eval "$(echo ${bloop_remaining[@]})";done
 		else
 			for (( i=0; i<=$bloop_times; i++));do
-			       	eval "$bloop_remaining"
+				eval "$(echo ${bloop_remaining[@]}|tr -d "'")"
 			done
 		fi
 	elif [ $bloop_enable_times -eq 0 ];then
 		while true;do 
-			eval "$bloop_remaining"
+			eval "$(echo ${bloop_remaining[@]}|tr -d "'")"
 			local returning=$?
 			if [ $returning -ne 0 ];then 
 				break
@@ -576,7 +571,7 @@ function loop(){
 	else
 		for ((i=0;i <= $bloop_times;i++))
 		do 
-			eval "$bloop_remaining"
+			eval "$(echo ${bloop_remaining[@]}|tr -d "'")"
 			returning=$?
 			if [ $returning -ne 0 ];then
 				break
@@ -584,7 +579,6 @@ function loop(){
 		done
 				return $returning
 	fi
-
 }
 trap "[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$" EXIT
 complete -E -F _comp_complete_longopt
