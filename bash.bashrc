@@ -459,7 +459,6 @@ cd_deldups(){
 function cd(){
 	local bcd_OPTS=$(getopt -o lchsLPe@ --long help -n 'cd' -- "$@")
 	if [ $? != 0 ];then echo "Please check if you gave invalid options." >&2 ; return 1 ;fi
-	eval set -- "$bcd_OPTS"
 	local bcd_history_mode=0 
 	local bcd_list=0 
 	local bcd_search=0 
@@ -467,8 +466,9 @@ function cd(){
 	local bcd_help=0
 	local bcd_builtin_cd=0
 	local bcd_builtin_opt='-'
-	while true; do
-		case "$1" in
+	local bcd_remaining=()
+	for bcd_opt in $bcd_OPTS; do
+		case "$bcd_opt" in
 			-h ) local bcd_history_mode=1; shift ;;
 			-l ) local bcd_list=1;shift;;
 			-s ) local bcd_search=1;shift;;
@@ -478,12 +478,11 @@ function cd(){
 			-P ) local bcd_builtin_cd=1;bcd_builtin_opt+="P";shift;;
 			-e ) local bcd_builtin_cd=1;bcd_builtin_opt+="e";shift;;
 			-@ ) local bcd_builtin_cd=1;bcd_builtin_opt+="@";shift;;
-			-- ) shift; break ;;
-			* ) break ;;
+			-- ) shift;;
+			* ) bcd_remaining+=($bcd_opt) ;;
 		esac
 	done
 	[ $bcd_builtin_opt == '-' ]&&bcd_builtin_opt='--'
-	local bcd_remaining="$@"
 	[ $bcd_help == 1 ]&&echo -e "$(builtin cd --help)\n\n    bydbash cd options:\n	-h	history mode\n	-l	print cd stack/print cd history\n	-c	clear cd stack/clear cd history\n	-s	search in the cd history(only works when -h is specified)\n\n	-LPe@ takes precedence over bydbash cd options.If you specified them,bydbash cd options will not work.\n	-lsc cannot be specified at the same time.\n\n	Each time you executed cd (including bash autocd),the variable \$OLDPWD will be appended\n	to file \$CD_HISTFILE\n\nYou can cd back to the last history record by bydbash command "uncd".It will cd back to the last path in \$RAMFS_DIR/"cdstack_\$\$" and then delete it (the path).\n\nSpecify the -h option when you want to trigger cd history completion,\n although it has no real effect.\n\nProvided by bydbash."&&return 0
 	local bcd_vars=("bcd_list" "bcd_search" "bcd_clear")
 	local count=0
@@ -512,15 +511,14 @@ function cd(){
 			return
 		fi
 	fi
-	[ ! -z "$bcd_remaining" ]&&bcd_remaining="'$bcd_remaining'"
 	local bpath
 	bpath=$($SYSROOT/usr/bin/grep "^$1----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
         if [ -z "$bpath" ];then
-        eval "builtin cd $bcd_builtin_opt $bcd_remaining";echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" ;echo "$PWD" >> $CD_HISTFILE
+        eval "builtin cd $bcd_builtin_opt ${bcd_remaining[@]}"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
         cd_deldups "$CD_HISTFILE"
         [ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
 else 
-        eval "builtin cd $bcd_builtin_opt '$bpath'";echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" ;echo "$PWD" >> $CD_HISTFILE
+        eval "builtin cd $bcd_builtin_opt '$bpath'"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
         fi
 }
 function uncd(){
@@ -534,16 +532,15 @@ function uncd(){
 }
 function loop(){
 	local bloop_OPTS
-	bloop_OPTS=$(getopt -o ut: --long help -n "$0" -- "$@")
+	bloop_OPTS=$(getopt -o ut: --long help -n "loop" -- "$@")
 	if [ $? != 0 ];then echo "Please check if you gave invalid options." >&2;return 1;fi
-	eval set -- "$bloop_OPTS"
 	local bloop_dont_exit_when_fail=0
 	local bloop_enable_times=0
 	local bloop_times=0
 	local bloop_help=0
-	local bloop_remaining=''
-	while true; do
-		case "$1" in
+	local bloop_remaining=()
+	for bloop_opt in $bloop_OPTS; do
+		case "$bloop_OPT" in
 			-u ) bloop_dont_exit_when_fail=1; shift;;
 			-t ) bloop_enable_times=1
 				bloop_times=$(echo -n $2 | tr -d ' ')
@@ -557,7 +554,7 @@ function loop(){
 		esac
 	done
 	bloop_remaining="$@"
-	[ $bloop_help -eq 1 ]&&(echo -ne "Usage: $0 [-u] [-t <times>] [command]\n\n	This function is used to execute a bash command for many times\n	Options:\n		-u don't return when command returned a non-zero value\n		-t <times> execute <command> for <times> times\n	<times> must be a integer.\n\nProvided by bydbash.")&&return 0
+	[ $bloop_help -eq 1 ]&&(echo -ne "Usage: loop [-u] [-t <times>] [command]\n\n	This function is used to execute a bash command for many times\n	Options:\n		-u don't return when command returned a non-zero value\n		-t <times> execute <command> for <times> times\n	<times> must be a integer.\n\nProvided by bydbash.")&&return 0
 	[ -z "$bloop_remaining" ]&&return 0
 	if [ $bloop_dont_exit_when_fail -eq 1 ];then
 		if [ $bloop_enable_times -eq 0 ];then
