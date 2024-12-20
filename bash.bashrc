@@ -504,7 +504,7 @@ function cd(){
 		if [ $bcd_list -eq 1 ];then
 			[ -s $CD_HISTFILE ]&&(cat $CD_HISTFILE||echo "cd history file is empty.";return 1);return
 		elif [ $bcd_search -eq 1 ];then
-			[ -z "$bcd_remaining" ]&&echo "Needs at least one char to search!"&&return 1||cat $CD_HISTFILE | grep "$bcd_remaining";return
+			[ -z "$bcd_remaining" ]&&echo "Needs at least one char to search!"&&return 1||eval "cat $CD_HISTFILE | grep $bcd_remaining";return
 		elif [ $bcd_clear -eq 1 ];then
 			read -ep "Are you sure you want to clear the cd history?(Y/n)" confirm
 			[[ "$confirm"x != nx && "$confirm"x != Nx ]]&& > $CD_HISTFILE&&return 0||return 1
@@ -512,12 +512,14 @@ function cd(){
 		fi
 	fi
 	local bpath
-	bpath=$($SYSROOT/usr/bin/grep "^$1----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
+	bpath=$(echo -ne $bcd_remaining|sed s/\'//g)
+	bpath=$($SYSROOT/usr/bin/grep "^$bpath----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
         if [ -z "$bpath" ];then
         eval "builtin cd $bcd_builtin_opt ${bcd_remaining[@]}"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
         cd_deldups "$CD_HISTFILE"
         [ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
-else 
+else
+       	echo "$bpath"
         eval "builtin cd $bcd_builtin_opt '$bpath'"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
         fi
 }
