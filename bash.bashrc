@@ -555,7 +555,7 @@ function loop(){
 	[ -z "$(echo ${bloop_remaining[@]})" ]&&return 0
 	if [ $bloop_dont_exit_when_fail -eq 1 ];then
 		if [ $bloop_enable_times -eq 0 ];then
-			while true;do eval "$(echo ${bloop_remaining[@]})";done
+			while true;do eval "$(echo ${bloop_remaining[@]}|tr -d "'")";done
 		else
 			for (( i=0; i<=$bloop_times; i++));do
 				eval "$(echo ${bloop_remaining[@]}|tr -d "'")"
