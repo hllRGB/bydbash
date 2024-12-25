@@ -5,6 +5,7 @@
 
 
 SYSROOT=""  ### 留空就是/,主要为了适配termux
+[ -z $TERMUX_VERSION ]||SYSROOT="/data/data/com.termux/files"
 color_prompt=yes #yes/no
 export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01' #GCC Colors
 shopt -s autocd cdspell histverify xpg_echo histappend checkwinsize  ## bash的一些功能开关
@@ -19,7 +20,6 @@ CD_HISTFILE=$HOME/.bash_cd_history ### cd历史,便于撤销cd
 # 用alias命令查看别名
 # ArchLinux几乎可以开箱即用,别的发行版要改改
 # 脚本有依赖的嗷, pkgfile(搜命令的),bash-completion(补全的),bash(应该不用多说了),ncurses(提供tput),bc(bashrc用作数据处理),tmux(好东西),git(好东西)
-
 
 
 
@@ -74,7 +74,7 @@ timing(){
 }
 timing_post(){
     local elapsed_time_ns=$((end_time - start_time))
-        local command_to_execute=$(history 1 | sed 's/^ *[0-9]\+ *//')
+        local command_to_execute=$(history 1 | $SYSROOT/usr/bin/sed 's/^ *[0-9]\+ *//')
         local elapsed_time_sec=$(echo "scale=2; $elapsed_time_ns / 1000000000" | bc)
         if [ $ret == 0 ];then
                 echo -e "\033[1;32m"
@@ -94,8 +94,8 @@ timing_post(){
 }
 ###辅助命令计时器的
 deldups(){
-        local first_cmd=$(tail -n 1 $HISTFILE)
-        local sec_cmd=$(tail -n 2 $HISTFILE|sed '$d')
+        local first_cmd=$($SYSROOT/usr/bin/tail -n 1 $HISTFILE)
+        local sec_cmd=$($SYSROOT/usr/bin/tail -n 2 $HISTFILE|$SYSROOT/usr/bin/sed '$d')
         if [ "$first_cmd"x == "$sec_cmd"x ];then
                 sed -i '$d' $HISTFILE
                 deldups_exec=1
@@ -105,7 +105,7 @@ deldups(){
         history -r
 }
 history -a
-pre_histsize=$(stat -c%s $HISTFILE)
+pre_histsize=$($SYSROOT/usr/bin/stat -c%s $HISTFILE)
 post_histsize=$pre_histsize
 ###命令执行之前由trap触发
 pre_exec(){
@@ -118,11 +118,11 @@ timing post
 history -a
 deldups
 if [ $in_init == 0 ];then
-        pre_histsize=$(stat -c%s $HISTFILE)
+        pre_histsize=$($SYSROOT/usr/bin/stat -c%s $HISTFILE)
         timing_post
 fi
-time1=$(date +%T|awk -F":" {'print $1":"$2'})
-time2=$(date +%T|awk -F":" {'print $3'})
+time1=$($SYSROOT/usr/bin/date +%T|$SYSROOT/usr/bin/awk -F":" {'print $1":"$2'})
+time2=$($SYSROOT/usr/bin/date +%T|$SYSROOT/usr/bin/awk -F":" {'print $3'})
 PATH="$(pwd):$SourcePATH"
 in_init=0
 }
@@ -132,7 +132,7 @@ if [ ! -z "$TMUX" ];then
 echo "You have already attached a tmux session!"
 return 1
 fi
-  sessions=$(tmux list-sessions -F "#S" 2>/dev/null)
+  sessions=$($SYSROOT/usr/bin/tmux list-sessions -F "#S" 2>/dev/null)
   if [ -z "$sessions" ];then
   $SYSROOT/usr/bin/tmux new-session -s bash
   return 0
@@ -168,7 +168,7 @@ elif [ "$mode"x == "kill"x ];then
 	kill_session=$(compgen -W "$sessions" -- "$kill_session")
 	read -ep "Do you really want to kill this session: $kill_session ? [y/N]" kill
 	[ -z $kill ]&&kill=n
-	[ $kill == y ]&&tmux kill-session -t $kill_session||[ $kill == n ]&&return 1||[ $kill == N ]&&return 1
+	[ $kill == y ]&&$SYSROOT/usr/bin/tmux kill-session -t $kill_session||[ $kill == n ]&&return 1||[ $kill == N ]&&return 1
   elif [ "$mode"x == "quit"x ]; then
     echo "canceled."
     return 1
@@ -183,8 +183,8 @@ elif [ "$mode"x == "kill"x ];then
 bind -x '"\C-t": tmuxmgr'
 trap 'pre_exec' DEBUG
 HISTCONTROL=ignorespace
-HISTSIZE=100000
-HISTFILESIZE=200000
+HISTSIZE=100000000
+HISTFILESIZE=200000000
 # make less more friendly for non-text input files, see lesspipe(1)
 [ -x $SYSROOT/usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
 PROMPT_COMMAND=post_exec
@@ -192,9 +192,9 @@ PROMPT_COMMAND=post_exec
 ### 不同发行版有不同的搜索工具,这里只写了俩,需要的自己改 ###
 if [ -x $SYSROOT/usr/bin/pkgfile ];then
 	. $SYSROOT/usr/share/doc/pkgfile/command-not-found.bash
-elif [ -x $SYSROOT/usr/share/command-not-found/command-not-found ];then
+elif [ -x $SYSROOT/usr/lib/command-not-found ];then
 	function command_not_found_handle(){
-		$SYSROOT/usr/share/command-not-found/command-not-found $1||(echo bash: $1: command not found&&return 127)
+		$SYSROOT/usr/lib/command-not-found $1||(echo bash: $1: command not found&&return 127)
 	}
 else
         echo "command pkgfile not found,cant search the command."
@@ -204,11 +204,11 @@ fi
 ###显示git分支的
 git_current_branch(){
 	local ref
-	ref=$(git symbolic-ref --quiet HEAD 2>/dev/null)
+	ref=$($SYSROOT/usr/bin/git symbolic-ref --quiet HEAD 2>/dev/null)
 	local return=$?
 	if [[ $return -ne 0 ]]; then
 		[[ $return -eq 128 ]] && return
-		ref=$(git rev-parse --short HEAD 2>/dev/null) || return
+		ref=$($SYSROOT/usr/bin/git rev-parse --short HEAD 2>/dev/null) || return
 	fi
 	if [ "$1" == "yes" ];then
 		echo="-\033[1;31m[\033[m${ref#refs/heads/}\033[1;31m]\033[m"
@@ -231,7 +231,7 @@ PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> '
 #unset color_prompt
 ###一些别名
 if [ -x $SYSROOT/usr/bin/dircolors ]; then
-    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    test -r ~/.dircolors && eval "$($SYSROOT/usr/bin/dircolors -b ~/.dircolors)" || eval "$($SYSROOT/usr/bin/dircolors -b)"
     alias ls='ls --color=auto -v -p -CF'
     alias dir='dir --color=auto'
     alias vdir='vdir --color=auto'
@@ -248,7 +248,7 @@ alias lh='lf -h'
 alias nf='neofetch'
 alias ff='fastfetch'
 alias ip='command ip -color=auto'
-alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|$SYSROOT/usr/bin/tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
 if [ $UID -ne 0 ];then
         alias sus='sudo -s'
         alias _='sudo'
@@ -280,12 +280,12 @@ savepath() {
     if ls $input -d >/dev/null 2>&1; then
     if [ -z "$input" ]; then
             echo "No path entered.will save current directory(pwd)."
-            path="$(pwd)"
+            path="$($SYSROOT/usr/bin/pwd)"
     else
-    path=$(realpath "$input")
+    path=$($SYSROOT/usr/bin/realpath "$input")
     fi
     local number=1
-    while grep -q "^bpath$number----bydpath-binding-to----" "$PATHS_SAVE_FILE"; do
+    while $SYSROOT/usr/bin/grep -q "^bpath$number----bydpath-binding-to----" "$PATHS_SAVE_FILE"; do
         number=$((number + 1))
     done
     echo "bpath$number----bydpath-binding-to----$path" >> "$PATHS_SAVE_FILE"
@@ -302,7 +302,7 @@ rmpath() {
     fi
 	
     for number in "$@"; do
-	if grep $number $PATHS_SAVE_FILE >/dev/null 2>&1;then
+	if $SYSROOT/usr/bin/grep $number $PATHS_SAVE_FILE >/dev/null 2>&1;then
         $SYSROOT/usr/bin/sed -i "/^$number----bydpath-binding-to----/d" "$PATHS_SAVE_FILE"
         echo "Path with number $number removed"
 else 
@@ -342,7 +342,7 @@ byd() {
             local prefix="${BASH_REMATCH[1]}"
             local number="${BASH_REMATCH[2]}"
             local path
-            path=$(grep "^$number----bydpath-binding-to----" "$PATHS_SAVE_FILE" | awk -F'----bydpath-binding-to----' '{print $2}')
+            path=$($SYSROOT/usr/bin/grep "^$number----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
             if [ -z "$path" ]; then
                 echo "Error: No path saved with number $number"
                 return 1
@@ -407,7 +407,7 @@ function _comp_bydbash_cd(){
     local cur prev opts
     cur="${COMP_WORDS[COMP_CWORD]}"
     _get_comp_words_by_ref cur prev words cword
-    if getopt -o h -- "$prev"  >/dev/null 2>&1  && getopt -o h -- "$prev" 2>/dev/null| grep -- -h 2>/dev/null >&2;then
+    if $SYSROOT/usr/bin/getopt -o h -- "$prev"  >/dev/null 2>&1  && $SYSROOT/usr/bin/getopt -o h -- "$prev" 2>/dev/null| $SYSROOT/usr/bin/grep -- -h 2>/dev/null >&2;then
     local do_histcomp=set
     fi
         	###done
@@ -419,7 +419,7 @@ function _comp_bydbash_cd(){
 	local ifs=$IFS
 	local i=0
 	IFS=$'\n'
-	for line in $([ -f $CD_HISTFILE ]&&grep "$cur" "$CD_HISTFILE");do
+	for line in $([ -f $CD_HISTFILE ]&&$SYSROOT/usr/bin/grep "$cur" "$CD_HISTFILE");do
 		COMPREPLY+=("$line")
 		i=$((i + 1))
 	done
@@ -450,14 +450,14 @@ local new_completions=()
 complete -o default -o nospace -F _comp_bydbash_bydpath byd
 #超级cd
 cd_deldups(){
-        local first_cmd=$(tail -n 1 $1)
-        local sec_cmd=$(tail -n 2 $1|sed '$d')
+        local first_cmd=$($SYSROOT/usr/bin/tail -n 1 $1)
+        local sec_cmd=$($SYSROOT/usr/bin/tail -n 2 $1|$SYSROOT/usr/bin/sed '$d')
         if [ "$first_cmd"x == "$sec_cmd"x ];then
-                sed -i '$d' $CD_HISTFILE
+                $SYSROOT/usr/bin/sed -i '$d' $CD_HISTFILE
         fi
 }
 function cd(){
-	local bcd_OPTS=$(getopt -o lchsLPe@ --long help -n 'cd' -- "$@")
+	local bcd_OPTS=$($SYSROOT/usr/bin/getopt -o lchsLPe@ --long help -n 'cd' -- "$@")
 	if [ $? != 0 ];then echo "Please check if you gave invalid options." >&2 ; return 1 ;fi
 	local bcd_history_mode=0 
 	local bcd_list=0 
@@ -492,7 +492,7 @@ function cd(){
 	[ $count -gt 1 ]&&echo "-l -s -c should not be specified at the same time.">&2&&return 1
 	if [ $bcd_history_mode -eq 0 -a $bcd_builtin_cd -eq 0 ];then
 		if [ $bcd_list -eq 1 ];then
-			[ -s $RAMFS_DIR/"cdstack_$$" ]&&cat $RAMFS_DIR/"cdstack_$$"||echo "cd stack is empty!";return
+			[ -s $RAMFS_DIR/"cdstack_$$" ]&&$SYSROOT/usr/bin/cat $RAMFS_DIR/"cdstack_$$"||echo "cd stack is empty!";return
 		elif [ $bcd_search -eq 1 ];then
 			echo "-s should be spcified only when -h is spcified."
 			return 1
@@ -502,7 +502,7 @@ function cd(){
 		fi
 	elif [ $bcd_builtin_cd -eq 0 ];then
 		if [ $bcd_list -eq 1 ];then
-			[ -s $CD_HISTFILE ]&&(cat $CD_HISTFILE||echo "cd history file is empty.";return 1);return
+			[ -s $CD_HISTFILE ]&&($SYSROOT/usr/bin/cat $CD_HISTFILE||echo "cd history file is empty.";return 1);return
 		elif [ $bcd_search -eq 1 ];then
 			[ -z "$bcd_remaining" ]&&echo "Needs at least one char to search!"&&return 1||eval "cat $CD_HISTFILE | grep $bcd_remaining";return
 		elif [ $bcd_clear -eq 1 ];then
@@ -512,7 +512,7 @@ function cd(){
 		fi
 	fi
 	local bpath
-	bpath=$(echo -ne $bcd_remaining|sed s/\'//g)
+	bpath=$(echo -ne $bcd_remaining|$SYSROOT/usr/bin/sed s/\'//g)
 	bpath=$($SYSROOT/usr/bin/grep "^$bpath----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
         if [ -z "$bpath" ];then
         eval "builtin cd $bcd_builtin_opt ${bcd_remaining[@]}"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
@@ -527,14 +527,14 @@ function uncd(){
 	[ "$1"x == "--helpx" ]&&echo -e "Usage:uncd\n\nThis function is provided to realize the undo function on cd.\ncd history will be saved in both $RAMFS_DIR/"cdstack_$$" and $CD_HISTFILE.Use cd -c to clear the cd stack,use cdhist -c to clear the cd history.\n\nProvided by bydbash."&&return
 	local uncd
 	[ ! -s $RAMFS_DIR/"cdstack_$$" ]&&echo "cd stack is empty!"&&return 1
-	uncd=$(tail -n 1 $RAMFS_DIR/"cdstack_$$")
+	uncd=$($SYSROOT/usr/bin/tail -n 1 $RAMFS_DIR/"cdstack_$$")
 	echo "will cd to $uncd"
 	eval "$(echo "builtin cd '$uncd'")"
-	sed -i '$d' $RAMFS_DIR/"cdstack_$$"
+	$SYSROOT/usr/bin/sed -i '$d' $RAMFS_DIR/"cdstack_$$"
 }
 function loop(){
 	local bloop_OPTS
-	bloop_OPTS=$(getopt -o ut: --long help -n "loop" -- "$@")
+	bloop_OPTS=$($SYSROOT/usr/bin/getopt -o ut: --long help -n "loop" -- "$@")
 	if [ $? != 0 ];then echo "Please check if you gave invalid options." >&2;return 1;fi
 	local bloop_dont_exit_when_fail=0
 	local bloop_enable_times=0
@@ -548,7 +548,7 @@ function loop(){
 			-t ) bloop_enable_times=1;shift 2;;
 			--help ) bloop_help=1;shift;;
 			-- ) end_opt=1;;
-			* ) [ $end_opt -ne 1 ]&&bloop_times=$(echo -n $bloop_opt|tr -d "'")||bloop_remaining+=($bloop_opt);;
+			* ) [ $end_opt -ne 1 ]&&bloop_times=$(echo -n $bloop_opt|$SYSROOT/usr/bin/tr -d "'")||bloop_remaining+=($bloop_opt);;
 		esac
 	done
 	[ $bloop_help -eq 1 ]&&(echo -ne "Usage: loop [-u] [-t <times>] [command]\n\n	This function is used to execute a bash command for many times\n	Options:\n		-u don't return when command returned a non-zero value\n		-t <times> execute <command> for <times> times\n	<times> must be a integer.\n\nProvided by bydbash.")&&return 0
@@ -558,12 +558,12 @@ function loop(){
 			while true;do eval "$(echo ${bloop_remaining[@]}|tr -d "'")";done
 		else
 			for (( i=0; i<=$bloop_times; i++));do
-				eval "$(echo ${bloop_remaining[@]}|tr -d "'")"
+				eval "$(echo ${bloop_remaining[@]}|$SYSROOT/usr/bin/tr -d "'")"
 			done
 		fi
 	elif [ $bloop_enable_times -eq 0 ];then
 		while true;do 
-			eval "$(echo ${bloop_remaining[@]}|tr -d "'")"
+			eval "$(echo ${bloop_remaining[@]}|$SYSROOT/usr/bin/tr -d "'")"
 			local returning=$?
 			if [ $returning -ne 0 ];then 
 				break
@@ -573,7 +573,7 @@ function loop(){
 	else
 		for ((i=0;i <= $bloop_times;i++))
 		do 
-			eval "$(echo ${bloop_remaining[@]}|tr -d "'")"
+			eval "$(echo ${bloop_remaining[@]}|$SYSROOT/usr/bin/tr -d "'")"
 			returning=$?
 			if [ $returning -ne 0 ];then
 				break
