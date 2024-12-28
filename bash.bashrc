@@ -238,7 +238,7 @@ if [ -x $SYSROOT/usr/bin/dircolors ]; then
     alias grep='grep --color=auto'
     alias fgrep='fgrep --color=auto'
     alias egrep='egrep --color=auto'
-    alias cdl='builtin cd $OLDPWD'
+    alias cdl='builtin cd -'
 fi
 alias ll='ls -alF'
 alias la='ls -A'
