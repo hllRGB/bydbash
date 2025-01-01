@@ -59,6 +59,7 @@ bind '"\t": menu-complete'
 bind '"\e[Z": menu-complete-backward'
 bind 'set colored-stats on'
 bind 'set colored-completion-prefix on'
+bind 'set menu-complete-display-prefix on'
 complete -F _comp_command sudo
 complete -F _comp_command _
 complete -E
