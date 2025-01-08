@@ -558,7 +558,7 @@ function loop(){
 		if [ $bloop_enable_times -eq 0 ];then
 			while true;do eval "$(echo ${bloop_remaining[@]}|tr -d "'")";done
 		else
-			for (( i=0; i<=$bloop_times; i++));do
+			for (( i=1; i<=$bloop_times; i++));do
 				eval "$(echo ${bloop_remaining[@]}|$SYSROOT/usr/bin/tr -d "'")"
 			done
 		fi
@@ -572,7 +572,7 @@ function loop(){
 		done
 				return $returning
 	else
-		for ((i=0;i <= $bloop_times;i++))
+		for ((i=1;i <= $bloop_times;i++))
 		do 
 			eval "$(echo ${bloop_remaining[@]}|$SYSROOT/usr/bin/tr -d "'")"
 			returning=$?
