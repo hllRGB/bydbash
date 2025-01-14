@@ -193,7 +193,7 @@ PROMPT_COMMAND=post_exec
 if [ -x $SYSROOT/usr/bin/pkgfile ];then
 	##. $SYSROOT/usr/share/doc/pkgfile/command-not-found.bash
 	command_not_found_handle () {
-		type -P thefuck>/dev/null 2>&1&&type -P fuck>/dev/null 2>&1&&(echo "detected thefuck,calling\n");fuck -- "$@";echo "\ncalling pkgfile"
+		type -P thefuck>/dev/null 2>&1&&[ "$(type -t fuck)a" == aliasa ]&&(echo "detected thefuck,calling\n")&&fuck -- "$@"&&echo "\ncalling pkgfile"
 		local cmd=$1
 		local pkgs
 		local FUNCNEST=10
