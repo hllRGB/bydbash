@@ -315,13 +315,13 @@ fi
 savepath() {
 	local path
 	local input="$1"
-	[ "$input"x == "--help"x ]&&echo -e "Usage:savepath [path] [bpathnumber (bpath*)]\n\nThis function is provided to save a file or a path to a shared file.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."&&return
-	if ls $input -d >/dev/null 2>&1; then
+	[ "$input"x == "--help"x ]&&echo -e "Usage:savepath [path] [bpathnumber (bpath*)]\n\nThis function is provided to save a file or a path to a shared file.\n\nCaution: Up to now,This function only supports s single file/dir at a time!\n\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."&&return
+	if ls "$input" -d >/dev/null 2>&1; then
 		if [ -z "$input" ]; then
 			echo "No path entered.will save current directory(pwd)."
 			path="$($SYSROOT/usr/bin/pwd)"
 		else
-			path=$($SYSROOT/usr/bin/realpath "$input")
+			path="$($SYSROOT/usr/bin/realpath "$input")"
 		fi
 		local number=1
 		while $SYSROOT/usr/bin/grep -q "^bpath$number----bydpath-binding-to----" "$PATHS_SAVE_FILE"; do
@@ -360,17 +360,17 @@ lspath() {
 ###使命令支持使用保存的路径编号
 byd() {
 	local cmd="$1"
-	shift
+	#shift
 	local args=()
 	local bpath_args=()
-	if [ "$cmd"awa == awa ]; then
+	if [ "$cmd"a == a ]; then
 		echo -e "Usage: byd [command] [command-args]\n\nThis function is to make bpath is supported in normal commands.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."
 		return
 	fi
 	for arg in "$@"; do
 		if [[ "$arg" =~ ^bpath[0-9]+$ ]]; then
 			local path
-			path=$($SYSROOT/usr/bin/grep "^$arg----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
+			path="'$($SYSROOT/usr/bin/grep "^$arg----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')'"
 			if [ -z "$path" ]; then
 				echo "Error: No path saved with number $arg"
 				return 1
@@ -381,7 +381,7 @@ byd() {
 			local prefix="${BASH_REMATCH[1]}"
 			local number="${BASH_REMATCH[2]}"
 			local path
-			path=$($SYSROOT/usr/bin/grep "^$number----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
+			path="'$($SYSROOT/usr/bin/grep "bpath$number----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')'"
 			if [ -z "$path" ]; then
 				echo "Error: No path saved with number $number"
 				return 1
@@ -389,7 +389,7 @@ byd() {
 			args+=("$prefix=$path")
 			bpath_args+=("$number----bydpath-binding-to----$path")
 		else
-			args+=("$arg")
+			args+=("'$arg'")
 		fi
 	done
 	if [[ "$cmd" == "sudo" || "$EUID" -eq 0 ]]; then
@@ -406,7 +406,10 @@ byd() {
 		fi
 		unset confirm
 	fi
-	eval "$cmd ${args[@]}"
+	#cat <<< $path
+	#cat <<< ${args[@]}
+	#eval "$cmd" ${args[@]}
+	eval ${args[@]}
 }
 complete -o default -o nospace -F _comp_complete_longopt savepath
 ###路径小工具的补全
