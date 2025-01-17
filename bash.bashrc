@@ -1,30 +1,24 @@
 # ~/.bashrc: executed by bash(1) for non-login shells.
 # see $SYSROOT/usr/share/doc/bash/examples/startup-files (in the package bash-doc)
-# 该bashrc能够在使用pacman包管理器的termux和archlinux上开箱即用.其他发行版请自行修改.
-### BASHRC 配置 ###
-
-SYSROOT=""  ### 留空就是/,主要为了适配termux
-[ -z $TERMUX_VERSION ]||SYSROOT="/data/data/com.termux/files" ##这里就是判断是否termux了.
-color_prompt=yes #yes/no
+[[ $- != *i* ]] && return # 非交互式情况下直接退出
+# 针对Arch Linux及其派生发行版以及基于pacman包管理的termux的开箱即用的bashrc.
+# BASHRC重要变量
+SYSROOT=""  # 留空就是/,主要为了适配termux
+[ -z $TERMUX_VERSION ]||SYSROOT="/data/data/com.termux/files" # 判断是否termux
+color_prompt=yes # 最好别动
 export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01' #GCC Colors
-shopt -s autocd cdspell histverify xpg_echo histappend checkwinsize  ## bash的一些功能开关
-RAMFS_DIR="$SYSROOT/tmp/bashrcFuncDatas" ### bashrc数据目录
+shopt -s autocd cdspell histverify xpg_echo histappend checkwinsize  # bash的一些功能开关
+RAMFS_DIR="$SYSROOT/tmp/bashrcFuncDatas" # bashrc数据目录
 SYSTEM_FETCH="fastfetch"
-HISTFILE="$HOME/.bash_history" ## bash 历史记录文件
-PROMPT_DIRTRIM=3 ###提示符中显示的目录层级数(效果类似~/.../aaa/bbb/ccc/)
-CD_HISTFILE=$HOME/.bash_cd_history ### cd历史,便于撤销cd
+HISTFILE="$HOME/.bash_history" # bash 历史记录文件
+PROMPT_DIRTRIM=3 # 提示符中显示的目录层级数(~/.../aaa/bbb/ccc/)
+CD_HISTFILE=$HOME/.bash_cd_history # cd历史,便于撤销cd
 HISTSIZE=100000000
 HISTFILESIZE=200000000
-
-###看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我看我###
-# 最好别拿别的shell跑这个
-# 用alias命令查看别名
-# ArchLinux几乎可以开箱即用,别的发行版要改改
-# 脚本有依赖的嗷, pkgfile(搜命令的),bash-completion(补全的),bash(应该不用多说了),ncurses(提供tput),bc(bashrc用作数据处理),tmux(好东西),git(好东西)
-
-
-
-### 这开始检查依赖 ###
+HISTCONTROL=ignorespace # ignorespace别动
+# BASHRC重要变量结束
+# 前部命令部分
+in_init=1
 if [ ! -f $RAMFS_DIR/hasramfsdir ]&&[ $$ -ne 1 ];then 
 	mkdir $RAMFS_DIR
 	chmod 777 $RAMFS_DIR
@@ -51,21 +45,63 @@ elif [ ! -f $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ]
 	touch $RAMFS_DIR/complete_dependency
 fi
 unset bashrc_deps
-### 检查好了
-in_init=1
-###进入init状态
 SourcePATH=$PATH
-bind 'set show-all-if-ambiguous on'
-bind '"\t": menu-complete'
-bind '"\e[Z": menu-complete-backward'
-bind 'set colored-stats on'
-bind 'set colored-completion-prefix on'
-bind 'set menu-complete-display-prefix on'
-complete -F _comp_command sudo
-complete -F _comp_command _
-complete -E
-#这给命令计时用的
-timing(){
+# make less more friendly for non-text input files, see lesspipe(1)
+[ -x $SYSROOT/usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+if [ -x $SYSROOT/usr/bin/pkgfile ];then
+	##. $SYSROOT/usr/share/doc/pkgfile/command-not-found.bash
+	command_not_found_handle () {
+		type -P thefuck>/dev/null 2>&1&&[ "$(type -t fuck)a" == aliasa ]&&(echo "detected thefuck,calling\n")&&fuck -- "$@"&&echo "\ncalling pkgfile"
+		local cmd=$1
+		local pkgs
+		local FUNCNEST=10
+		set +o verbose
+		mapfile -t pkgs < <(pkgfile -bv -- "$cmd" 2>/dev/null)
+		if (( ${#pkgs[*]} > 0 )); then
+			echo "$cmd may be found in the following packages:"
+			for ((i = 0; i < ${#pkgs[@]}; i++)); do
+				echo "\033[1;34m$((i + 1)). ${pkgs[$i]}\033[m"
+			done
+		fi
+		if (( ${#pkgs[*]} == 1 )); then
+			local pkg=${pkgs[0]%% *}
+			local reading=$(echo "Install \033[1;34m$pkg\033[m? [\033[1;32mY\033[m/\033[1;31mn\033[m] ===> ")
+			read -rp "$reading" response
+			[[ -z $response || $response = [Yy] ]] || return 0
+			printf '\n'
+			type -P sudo > /dev/null 2>&1 &&sudo pacman -Sy --noconfirm -- "$pkg"||pacman -Sy -noconfirm -- "$pkg"
+			return
+		elif (( ${#pkgs[*]} > 1 )); then
+			read -p "Enter the number of the package to install (q = quit,default 1): " choice
+			[[ $choice = [Qq] ]]&&return 1
+			[ -z $choice ]&&choice=1
+			if [[ $choice =~ ^[0-9]+$ ]] && (( choice > 0 && choice <= ${#pkgs[*]} )); then
+				local pkg=$(echo "${pkgs[choice - 1]}" | awk '{print $1}')
+				type -P sudo > /dev/null 2>&1 &&sudo pacman -Sy --noconfirm -- "$pkg"||pacman -Sy -noconfirm -- "$pkg"
+				return
+			else
+				echo "Invalid choice. Aborting."
+				return 127
+			fi
+		fi
+		if (( ${#pkgs[*]} == 0 )); then
+			printf "bash: %s: command not found\n" "$cmd"
+		fi
+		return 127
+	}
+elif [ -x $SYSROOT/usr/lib/command-not-found ];then
+	function command_not_found_handle(){
+		$SYSROOT/usr/lib/command-not-found $1||(echo bash: $1: command not found&&return 127)
+	}
+else
+	echo "command pkgfile not found,cant search the command."
+	echo "you can install extra/pkgfile with sudo pacman -Sy pkgfile."
+	echo "If you are not using Arch Linux(or any other pacman-based distribution),try to use other package searcher."
+fi
+
+# 前部命令部分结束
+# 函数定义部分
+timing(){ # 命令计时器
 	if [ "$1" == pre ];then
 		[ $in_init -eq 1 ]&&return
 		start_time="$($SYSROOT/usr/bin/date +%s%N)"
@@ -74,7 +110,7 @@ timing(){
 		end_time="$($SYSROOT/usr/bin/date +%s%N)"
 	fi
 }
-timing_post(){
+timing_post(){ # 命令计时器
 	local elapsed_time_ns=$((end_time - start_time))
 	local command_to_execute=$(history 1 | $SYSROOT/usr/bin/sed 's/^ *[0-9]\+ *//')
 	local elapsed_time_sec=$(echo "scale=2; $elapsed_time_ns / 1000000000" | $SYSROOT/usr/bin/bc)
@@ -94,8 +130,7 @@ timing_post(){
 	post_histsize=$pre_histsize
 	unset pre_histsize
 }
-###辅助命令计时器的
-deldups(){
+deldups(){ # 命令计时器
 	local first_cmd=$($SYSROOT/usr/bin/tail -n 1 $HISTFILE)
 	local sec_cmd=$($SYSROOT/usr/bin/tail -n 2 $HISTFILE|$SYSROOT/usr/bin/sed '$d')
 	if [ "$first_cmd"x == "$sec_cmd"x ];then
@@ -106,30 +141,7 @@ deldups(){
 	fi
 	history -r
 }
-history -a
-pre_histsize=$($SYSROOT/usr/bin/stat -c%s $HISTFILE)
-post_histsize=$pre_histsize
-###命令执行之前由trap触发
-pre_exec(){
-	[ "$in_timing"x == yesx ]||timing pre
-}
-###命令执行之后由PROMPT_COMMAND触发
-post_exec(){
-	ret=$?
-	timing post
-	history -a
-	deldups
-	if [ $in_init == 0 ];then
-		pre_histsize=$($SYSROOT/usr/bin/stat -c%s $HISTFILE)
-		timing_post
-	fi
-	time1=$($SYSROOT/usr/bin/date +%T|$SYSROOT/usr/bin/awk -F":" {'print $1":"$2'})
-	time2=$($SYSROOT/usr/bin/date +%T|$SYSROOT/usr/bin/awk -F":" {'print $3'})
-	PATH="$(pwd):$SourcePATH"
-	in_init=0
-}
-###tmux小工具
-tmuxmgr() {
+tmuxmgr() { # tmux工具
 	if [ ! -z "$TMUX" ];then
 		echo "You have already attached a tmux session!"
 		return 1
@@ -182,66 +194,7 @@ tmuxmgr() {
 		tmuxmgr
 	fi
 }
-bind -x '"\C-t": tmuxmgr'
-trap 'pre_exec' DEBUG
-HISTCONTROL=ignorespace
-# make less more friendly for non-text input files, see lesspipe(1)
-[ -x $SYSROOT/usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
-PROMPT_COMMAND=post_exec
-###命令找不到就调用这个(这是bash内建的小功能,debian的bashrc好像就自带这个)
-### 不同发行版有不同的搜索工具,这里只写了俩,需要的自己改 ###
-if [ -x $SYSROOT/usr/bin/pkgfile ];then
-	##. $SYSROOT/usr/share/doc/pkgfile/command-not-found.bash
-	command_not_found_handle () {
-		type -P thefuck>/dev/null 2>&1&&[ "$(type -t fuck)a" == aliasa ]&&(echo "detected thefuck,calling\n")&&fuck -- "$@"&&echo "\ncalling pkgfile"
-		local cmd=$1
-		local pkgs
-		local FUNCNEST=10
-		set +o verbose
-		mapfile -t pkgs < <(pkgfile -bv -- "$cmd" 2>/dev/null)
-		if (( ${#pkgs[*]} > 0 )); then
-			echo "$cmd may be found in the following packages:"
-			for ((i = 0; i < ${#pkgs[@]}; i++)); do
-				echo "\033[1;34m$((i + 1)). ${pkgs[$i]}\033[m"
-			done
-		fi
-		if (( ${#pkgs[*]} == 1 )); then
-			local pkg=${pkgs[0]%% *}
-			local reading=$(echo "Install \033[1;34m$pkg\033[m? [\033[1;32mY\033[m/\033[1;31mn\033[m] ===> ")
-			read -rp "$reading" response
-			[[ -z $response || $response = [Yy] ]] || return 0
-			printf '\n'
-			type -P sudo > /dev/null 2>&1 &&sudo pacman -Sy --noconfirm -- "$pkg"||pacman -Sy -noconfirm -- "$pkg"
-			return
-		elif (( ${#pkgs[*]} > 1 )); then
-			read -p "Enter the number of the package to install (q = quit,default 1): " choice
-			[[ $choice = [Qq] ]]&&return 1
-			[ -z $choice ]&&choice=1
-			if [[ $choice =~ ^[0-9]+$ ]] && (( choice > 0 && choice <= ${#pkgs[*]} )); then
-				local pkg=$(echo "${pkgs[choice - 1]}" | awk '{print $1}')
-				type -P sudo > /dev/null 2>&1 &&sudo pacman -Sy --noconfirm -- "$pkg"||pacman -Sy -noconfirm -- "$pkg"
-				return
-			else
-				echo "Invalid choice. Aborting."
-				return 127
-			fi
-		fi
-		if (( ${#pkgs[*]} == 0 )); then
-			printf "bash: %s: command not found\n" "$cmd"
-		fi
-		return 127
-	}
-elif [ -x $SYSROOT/usr/lib/command-not-found ];then
-	function command_not_found_handle(){
-		$SYSROOT/usr/lib/command-not-found $1||(echo bash: $1: command not found&&return 127)
-	}
-else
-	echo "command pkgfile not found,cant search the command."
-	echo "you can install extra/pkgfile with sudo pacman -Sy pkgfile."
-	echo "If you are not using Arch Linux(or any other pacman-based distribution),try to use other package searcher."
-fi
-###显示git分支的
-git_current_branch(){
+git_current_branch(){ # git分支显示
 	local ref
 	ref=$($SYSROOT/usr/bin/git symbolic-ref --quiet HEAD 2>/dev/null)
 	local return=$?
@@ -256,63 +209,7 @@ git_current_branch(){
 	fi
 	echo -ne "$echo"
 }
-### 设置提示符的 ###
-PS1='\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&$SYSROOT/usr/bin/tput blink&&echo -n ':'&&$SYSROOT/usr/bin/tput sgr0&&echo -n $time2 $([ $UID = 0 ]&&$SYSROOT/usr/bin/tput smul&&$SYSROOT/usr/bin/tput blink&&echo -n \[\033[1\;31m\]$(whoami)&&$SYSROOT/usr/bin/tput sgr0||echo \[\033[1\;34m\]$(whoami)))\[\033[1;31m\]@\[\033[34m\]\h \[\033[33m\]\w\[\033[31m\]]\[\033[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\033[1\;32m\]||echo \[\033[1\;31m\]$ret)\$>>_\[\e[m\] '
-PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>$(echo -n \[\033[m\])'
-PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > $(echo -n \[\033[m\])'
-PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> $(echo -n \[\033[m\])'
-#if [ $color_prompt = no ];then 
-#	PS1='┌─[$0-$$ $(echo -n "$time1:$time2") $(whoami)@\h \w]\[\033[m\]$(git_current_branch no)\n└─$([ $ret = 0 ]||echo -n $ret)\$>>_\[\e[m\] '
-#    PS2='[Line $LINENO]> '
-#    PS3='\[[$0]Select > '
-#    PS4='\[[$0] Line $LINENO:> '
-#fi
-#unset color_prompt
-###一些别名
-if [ -x $SYSROOT/usr/bin/dircolors ]; then
-	test -r ~/.dircolors && eval "$($SYSROOT/usr/bin/dircolors -b ~/.dircolors)" || eval "$($SYSROOT/usr/bin/dircolors -b)"
-	alias ls='ls --color=auto -v -p -CF'
-	alias dir='dir --color=auto'
-	alias vdir='vdir --color=auto'
-	alias grep='grep --color=auto'
-	alias fgrep='fgrep --color=auto'
-	alias egrep='egrep --color=auto'
-	alias cdl='builtin cd -'
-fi
-alias ll='ls -alF'
-alias la='ls -A'
-alias l='ls'
-alias lf='ls -alFA --color=auto'
-alias lh='lf -h'
-alias nf='neofetch'
-alias ff='fastfetch'
-alias ip='command ip -color=auto'
-alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|$SYSROOT/usr/bin/tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
-if [ $UID -ne 0 ];then
-	alias sus='sudo -s'
-	alias _='sudo'
-fi
-if [ -f ~/.bash_aliases ]; then
-	. ~/.bash_aliases
-fi
-if ! shopt -oq posix; then
-	if [ -f $SYSROOT/usr/share/bash-completion/bash_completion ]; then
-		. $SYSROOT/usr/share/bash-completion/bash_completion
-	elif [ -f $SYSROOT/etc/bash_completion ]; then
-		. $SYSROOT/etc/bash_completion
-	fi
-fi
-###整个fastfetch也不错(前头可以改嗷)
-if [ -z $SUDO_USER ]&&[ $$ -ne 1 ];then
-	eval $SYSTEM_FETCH
-fi
-PATHS_SAVE_FILE="$RAMFS_DIR/saved_paths.txt"
-if [ ! -f "$PATHS_SAVE_FILE" ]; then
-	touch "$PATHS_SAVE_FILE"
-fi
-###路径实用小工具
-###保存绝对路径
-savepath() {
+savepath() { # 保存绝对路径->代号
 	local path
 	local input="$1"
 	[ "$input"x == "--help"x ]&&echo -e "Usage:savepath [path] [bpathnumber (bpath*)]\n\nThis function is provided to save a file or a path to a shared file.\n\nCaution: Up to now,This function only supports s single file/dir at a time!\n\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."&&return 0
@@ -333,8 +230,7 @@ savepath() {
 	echo "Path saved with number bpath$number"
 
 }
-###删除绝对路径的保存
-rmpath() {
+rmpath() { # 删除代号
 	if [ $# -eq 0 ]|| [ "$1"x == --helpx ]; then
 		echo -e "Usage: rmpath [bpathnumber ...]\n\nThis function is to remove a saved path.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."
 		return 1
@@ -349,16 +245,14 @@ rmpath() {
 		fi
 	done
 }
-###列出保存的路径
-lspath() {
+lspath() { # 列出保存的绝对路径
 	[ "$1"x == --helpx ]&&echo -e "Usage:lspath\nThis function is provided to list saved path is the shared file.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number.]\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."
 	if [ ! -s "$PATHS_SAVE_FILE" ]; then
 		return 1
 	fi
 	$SYSROOT/usr/bin/cat "$PATHS_SAVE_FILE"
 }
-###使命令支持使用保存的路径编号
-byd() {
+byd() { # 使命令支持绝对路径
 	local cmd="$1"
 	#shift
 	local args=()
@@ -406,99 +300,21 @@ byd() {
 		fi
 		unset confirm
 	fi
-	#cat <<< $path
-	#cat <<< ${args[@]}
-	#eval "$cmd" ${args[@]}
 	eval ${args[@]}
 }
-complete -o default -o nospace -F _comp_complete_longopt savepath
-###路径小工具的补全
-_comp_bydbash_lspath(){
-	local waiting_to_complete
-	waiting_to_complete=$(echo -n "--help ";lspath>/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
-	local ref=$?
-	if [ $ref -ne 1 ];then
-		cur="${COMP_WORDS[COMP_CWORD]}"
-		COMPREPLY=($(compgen -W "$waiting_to_complete" -- $cur))
-	else
-		COMPREPLY=(No-Path)
-	fi
-}
-###清空保存的路径
-clpath(){
+clpath(){ # 清除保存的绝对路径
 	[ "$1"x == --helpx ]&&echo -e "Usage:clpath\n\nThis function is provided for clear saved paths.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."&&return
 	> "$PATHS_SAVE_FILE"
 	echo "Paths cleared."
 }
-complete -o default -o nospace -F _comp_bydbash_lspath rmpath
-###还是补全
-_comp_bydbash_bydpath() {    
-	local waiting_to_complete
-	waiting_to_complete=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
-	local cur prev opts
-	COMPREPLY=()
-	cur="${COMP_WORDS[COMP_CWORD]}"
-	_comp_command
-	COMPREPLY+=($(compgen -W "$waiting_to_complete" -- $cur))
-	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
-}
-function _comp_bydbash_cd(){
-	### 对bpath的支持
-	local bpathcomp
-	bpathcomp=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
-	local cur prev opts
-	cur="${COMP_WORDS[COMP_CWORD]}"
-	_get_comp_words_by_ref cur prev words cword
-	if $SYSROOT/usr/bin/getopt -o h -- "$prev"  >/dev/null 2>&1  && $SYSROOT/usr/bin/getopt -o h -- "$prev" 2>/dev/null| $SYSROOT/usr/bin/grep -- -h 2>/dev/null >&2;then
-		local do_histcomp=set
-	fi
-	###done
-	if [[ "$do_histcomp"x = "set"x ]]&&[ ! -z $cur ];then
-		###历史记录的补全
-		compopt -o dirnames 
-		compopt -o plusdirs
-		local histcomp
-		local ifs=$IFS
-		local i=0
-		IFS=$'\n'
-		for line in $([ -f $CD_HISTFILE ]&&$SYSROOT/usr/bin/grep "$cur" "$CD_HISTFILE");do
-			COMPREPLY+=("$line")
-			i=$((i + 1))
-		done
-		IFS=$ifs
-		unset do_histcomp
-		###done
-		###原版cd补全
-	else
-		_comp_cmd_cd
-		compopt +o filenames
-		compopt -o dirnames
-		compopt -o plusdirs
-		local new_completions=()
-		local item
-		for item in "${COMPREPLY[@]}"; do
-			if [[ $item == *['#@ *?[];|&$\']* ]]; then
-				item="${item//\'/\'\\\'\'}"
-			fi
-			new_completions+=("$item")
-		done
-		COMPREPLY=("${new_completions[@]}")
-		###done
-	fi
-	COMPREPLY+=($(compgen -W "$bpathcomp" -- $cur))
-	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
-
-}
-complete -o default -o nospace -F _comp_bydbash_bydpath byd
-#超级cd
-cd_deldups(){
+cd_deldups(){ # 更好的cd的函数前置
 	local first_cmd=$($SYSROOT/usr/bin/tail -n 1 $1)
 	local sec_cmd=$($SYSROOT/usr/bin/tail -n 2 $1|$SYSROOT/usr/bin/sed '$d')
 	if [ "$first_cmd"x == "$sec_cmd"x ];then
 		$SYSROOT/usr/bin/sed -i '$d' $CD_HISTFILE
 	fi
 }
-function cd(){
+function cd(){ # 更好的cd
 	local bcd_OPTS=$($SYSROOT/usr/bin/getopt -o lchsLPe@ --long help -n 'cd' -- "$@")
 	if [ $? != 0 ];then echo "Please check if you gave invalid options." >&2 ; return 1 ;fi
 	local bcd_history_mode=0 
@@ -565,7 +381,7 @@ function cd(){
 		eval "builtin cd $bcd_builtin_opt '$bpath'"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
 	fi
 }
-function uncd(){
+function uncd(){ # cd的撤回系统
 	[ "$1"x == "--helpx" ]&&echo -e "Usage:uncd\n\nThis function is provided to realize the undo function on cd.\ncd history will be saved in both $RAMFS_DIR/"cdstack_$$" and $CD_HISTFILE.Use cd -c to clear the cd stack,use cdhist -c to clear the cd history.\n\nProvided by bydbash."&&return
 	local uncd
 	[ ! -s $RAMFS_DIR/"cdstack_$$" ]&&echo "cd stack is empty!"&&return 1
@@ -574,7 +390,7 @@ function uncd(){
 	eval "$(echo "builtin cd '$uncd'")"
 	$SYSROOT/usr/bin/sed -i '$d' $RAMFS_DIR/"cdstack_$$"
 }
-function loop(){
+function loop(){ # bash自动循环执行命令
 	local bloop_OPTS
 	bloop_OPTS=$($SYSROOT/usr/bin/getopt -o ut: --long help -n "loop" -- "$@")
 	if [ $? != 0 ];then echo "Please check if you gave invalid options." >&2;return 1;fi
@@ -624,9 +440,161 @@ function loop(){
 		return $returning
 	fi
 }
-trap "[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$" EXIT
-complete -E -F _comp_complete_longopt
-_cd  ##这个地方...好像不执行这个命令那么_comp_cmd_cd这个函数不会出来...
-complete -o default -o nospace -F _comp_bydbash_cd cd
+pre_exec(){ # 命令执行之前由trap触发的函数
+	[ "$in_timing"x == yesx ]||timing pre
+}
+post_exec(){ # 命令执行之后由PROMPT_COMMAND触发的函数
+	ret=$?
+	timing post
+	history -a
+	deldups
+	if [ $in_init == 0 ];then
+		pre_histsize=$($SYSROOT/usr/bin/stat -c%s $HISTFILE)
+		timing_post
+	fi
+	time1=$($SYSROOT/usr/bin/date +%T|$SYSROOT/usr/bin/awk -F":" {'print $1":"$2'})
+	time2=$($SYSROOT/usr/bin/date +%T|$SYSROOT/usr/bin/awk -F":" {'print $3'})
+	PATH="$(pwd):$SourcePATH"
+	in_init=0
+}
+# 函数部分结束
+# 后部命令部分
+history -a # 命令计时器
+pre_histsize=$($SYSROOT/usr/bin/stat -c%s $HISTFILE)
+post_histsize=$pre_histsize ##
 [ -f $HOME/.bashrc ]&&source $HOME/.bashrc||true
-###完事嗷
+PROMPT_COMMAND=post_exec
+trap "[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$" EXIT
+trap 'pre_exec' DEBUG
+if [ -z $SUDO_USER ]&&[ $$ -ne 1 ];then
+	eval $SYSTEM_FETCH
+fi
+PATHS_SAVE_FILE="$RAMFS_DIR/saved_paths.txt"
+if [ ! -f "$PATHS_SAVE_FILE" ]; then
+	touch "$PATHS_SAVE_FILE"
+fi
+# 后部命令部分结束
+# 别名部分
+if [ -x $SYSROOT/usr/bin/dircolors ]; then
+	test -r ~/.dircolors && eval "$($SYSROOT/usr/bin/dircolors -b ~/.dircolors)" || eval "$($SYSROOT/usr/bin/dircolors -b)"
+	alias ls='ls --color=auto -v -p -CF'
+	alias dir='dir --color=auto'
+	alias vdir='vdir --color=auto'
+	alias grep='grep --color=auto'
+	alias fgrep='fgrep --color=auto'
+	alias egrep='egrep --color=auto'
+fi
+alias cdl='builtin cd -'
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls'
+alias lf='ls -alFA --color=auto'
+alias lh='lf -h'
+alias nf='neofetch'
+alias ff='fastfetch'
+alias ip='command ip -color=auto'
+alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|$SYSROOT/usr/bin/tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+if [ $UID -ne 0 ];then
+	alias sus='sudo -s'
+	alias _='sudo'
+fi
+if [ -f ~/.bash_aliases ]; then
+	. ~/.bash_aliases
+fi
+# 别名部分结束
+# 补全部分
+if ! shopt -oq posix; then
+	if [ -f $SYSROOT/usr/share/bash-completion/bash_completion ]; then
+		. $SYSROOT/usr/share/bash-completion/bash_completion
+	elif [ -f $SYSROOT/etc/bash_completion ]; then
+		. $SYSROOT/etc/bash_completion
+	fi
+fi
+_cd # 有用
+## 补全函数
+_comp_bydbash_lspath(){
+	local waiting_to_complete
+	waiting_to_complete=$(echo -n "--help ";lspath>/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
+	local ref=$?
+	if [ $ref -ne 1 ];then
+		cur="${COMP_WORDS[COMP_CWORD]}"
+		COMPREPLY=($(compgen -W "$waiting_to_complete" -- $cur))
+	else
+		COMPREPLY=(No-Path)
+	fi
+}
+_comp_bydbash_bydpath() {    
+	local waiting_to_complete
+	waiting_to_complete=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
+	local cur prev opts
+	COMPREPLY=()
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	_comp_command
+	COMPREPLY+=($(compgen -W "$waiting_to_complete" -- $cur))
+	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
+}
+function _comp_bydbash_cd(){
+	local bpathcomp
+	bpathcomp=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
+	local cur prev opts
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	_get_comp_words_by_ref cur prev words cword
+	if $SYSROOT/usr/bin/getopt -o h -- "$prev"  >/dev/null 2>&1  && $SYSROOT/usr/bin/getopt -o h -- "$prev" 2>/dev/null| $SYSROOT/usr/bin/grep -- -h 2>/dev/null >&2;then
+		local do_histcomp=set
+	fi
+	if [[ "$do_histcomp"x = "set"x ]]&&[ ! -z $cur ];then
+		compopt -o dirnames 
+		compopt -o plusdirs
+		local histcomp
+		local ifs=$IFS
+		local i=0
+		IFS=$'\n'
+		for line in $([ -f $CD_HISTFILE ]&&$SYSROOT/usr/bin/grep "$cur" "$CD_HISTFILE");do
+			COMPREPLY+=("$line")
+			i=$((i + 1))
+		done
+		IFS=$ifs
+		unset do_histcomp
+	else
+		_comp_cmd_cd
+		compopt +o filenames
+		compopt -o dirnames
+		compopt -o plusdirs
+		local new_completions=()
+		local item
+		for item in "${COMPREPLY[@]}"; do
+			if [[ $item == *['#@ *?[];|&$\']* ]]; then
+				item="${item//\'/\'\\\'\'}"
+			fi
+			new_completions+=("$item")
+		done
+		COMPREPLY=("${new_completions[@]}")
+	fi
+	COMPREPLY+=($(compgen -W "$bpathcomp" -- $cur))
+	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
+
+}
+## 补全函数结束
+complete -F _comp_command sudo
+complete -F _comp_command _
+complete -o default -o nospace -F _comp_bydbash_cd cd
+complete -E -F _comp_complete_longopt
+complete -o default -o nospace -F _comp_bydbash_bydpath byd
+complete -o default -o nospace -F _comp_bydbash_lspath rmpath
+complete -o default -o nospace -F _comp_complete_longopt savepath
+# 补全部分结束
+# 命令提示符部分
+PS1='\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&$SYSROOT/usr/bin/tput blink&&echo -n ':'&&$SYSROOT/usr/bin/tput sgr0&&echo -n $time2 $([ $UID = 0 ]&&$SYSROOT/usr/bin/tput smul&&$SYSROOT/usr/bin/tput blink&&echo -n \[\033[1\;31m\]$(whoami)&&$SYSROOT/usr/bin/tput sgr0||echo \[\033[1\;34m\]$(whoami)))\[\033[1;31m\]@\[\033[34m\]\h \[\033[33m\]\w\[\033[31m\]]\[\033[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\033[1\;32m\]||echo \[\033[1\;31m\]$ret)\$>>_\[\e[m\] '
+PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>$(echo -n \[\033[m\])'
+PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > $(echo -n \[\033[m\])'
+PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> $(echo -n \[\033[m\])'
+# 命令提示符部分结束
+# bind部分
+bind 'set show-all-if-ambiguous on'
+bind '"\t": menu-complete'
+bind '"\e[Z": menu-complete-backward'
+bind 'set colored-stats on'
+bind 'set colored-completion-prefix on'
+bind 'set menu-complete-display-prefix on'
+bind -x '"\C-x\C-t": tmuxmgr'
+# bind部分结束
