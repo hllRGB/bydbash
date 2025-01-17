@@ -315,23 +315,23 @@ fi
 savepath() {
 	local path
 	local input="$1"
-	[ "$input"x == "--help"x ]&&echo -e "Usage:savepath [path] [bpathnumber (bpath*)]\n\nThis function is provided to save a file or a path to a shared file.\n\nCaution: Up to now,This function only supports s single file/dir at a time!\n\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."&&return
-	if ls "$input" -d >/dev/null 2>&1; then
-		if [ -z "$input" ]; then
-			echo "No path entered.will save current directory(pwd)."
-			path="$($SYSROOT/usr/bin/pwd)"
-		else
-			path="$($SYSROOT/usr/bin/realpath "$input")"
-		fi
-		local number=1
-		while $SYSROOT/usr/bin/grep -q "^bpath$number----bydpath-binding-to----" "$PATHS_SAVE_FILE"; do
-			number=$((number + 1))
-		done
-		echo "bpath$number----bydpath-binding-to----$path" >> "$PATHS_SAVE_FILE"
-		echo "Path saved with number bpath$number"
+	[ "$input"x == "--help"x ]&&echo -e "Usage:savepath [path] [bpathnumber (bpath*)]\n\nThis function is provided to save a file or a path to a shared file.\n\nCaution: Up to now,This function only supports s single file/dir at a time!\n\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."&&return 0
+	[ -z "$input" ]&&local empty=1||local empty=0	
+	if [ $empty -eq 1 ]; then
+		echo "No path entered.will save current directory(pwd)."
+		path="$(builtin pwd)"
+	elif ls "$input" -d 2>&1; then
+		path="$($SYSROOT/usr/bin/realpath "$input")"
 	else 
-		echo Unavalid path.
+		echo Unavalid path.&&return 1
 	fi
+	local number=1
+	while $SYSROOT/usr/bin/grep -q "^bpath$number----bydpath-binding-to----" "$PATHS_SAVE_FILE"; do
+		number=$((number + 1))
+	done
+	echo "bpath$number----bydpath-binding-to----$path" >> "$PATHS_SAVE_FILE"
+	echo "Path saved with number bpath$number"
+
 }
 ###删除绝对路径的保存
 rmpath() {
