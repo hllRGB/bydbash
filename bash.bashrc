@@ -69,7 +69,7 @@ if [ -x $SYSROOT/usr/bin/pkgfile ];then
 			read -rp "$reading" response
 			[[ -z $response || $response = [Yy] ]] || return 0
 			printf '\n'
-			type -P sudo > /dev/null 2>&1 &&sudo pacman -Sy --noconfirm -- "$pkg"||pacman -Sy -noconfirm -- "$pkg"
+			type -P sudo > /dev/null 2>&1 &&sudo pacman -Sy --noconfirm -- "$pkg"||pacman -Sy --noconfirm -- "$pkg"
 			return
 		elif (( ${#pkgs[*]} > 1 )); then
 			read -p "Enter the number of the package to install (q = quit,default 1): " choice
@@ -77,7 +77,7 @@ if [ -x $SYSROOT/usr/bin/pkgfile ];then
 			[ -z $choice ]&&choice=1
 			if [[ $choice =~ ^[0-9]+$ ]] && (( choice > 0 && choice <= ${#pkgs[*]} )); then
 				local pkg=$(echo "${pkgs[choice - 1]}" | awk '{print $1}')
-				type -P sudo > /dev/null 2>&1 &&sudo pacman -Sy --noconfirm -- "$pkg"||pacman -Sy -noconfirm -- "$pkg"
+				type -P sudo > /dev/null 2>&1 &&sudo pacman -Sy --noconfirm -- "$pkg"||pacman -Sy --noconfirm -- "$pkg"
 				return
 			else
 				echo "Invalid choice. Aborting."
