@@ -16,21 +16,26 @@ CD_HISTFILE=$HOME/.bash_cd_history # cd历史,便于撤销cd
 HISTSIZE=100000000
 HISTFILESIZE=200000000
 HISTCONTROL=ignorespace # ignorespace别动
+PATHS_SAVE_FILE="$RAMFS_DIR/saved_paths.txt"
 # BASHRC重要变量结束
 # 前部命令部分
 in_init=1
 if [ ! -f $RAMFS_DIR/hasramfsdir ]&&[ $$ -ne 1 ];then 
 	mkdir $RAMFS_DIR
 	chmod 777 $RAMFS_DIR
-	touch $RAMFS_DIR/hasramfsdir
+	> $RAMFS_DIR/hasramfsdir
 fi
-[ ! -f $HISTFILE ]&&touch $HISTFILE
-[ ! -f $CD_HISTFILE ]&&touch $CD_HISTFILE
+[ ! -f $HISTFILE ]&&> $HISTFILE
+[ ! -f $CD_HISTFILE ]&&> $CD_HISTFILE
+if [ ! -f "$PATHS_SAVE_FILE" ]; then
+	> "$PATHS_SAVE_FILE"
+fi
+
 bashrc_deps="pkgfile bash-completion bash ncurses bc tmux git"
 if [ -x $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
 	echo -n "Its the first time to start bash since boot,checking dependencies..."
 	if pacman -Qq $bashrc_deps > /dev/null 2>&1;then
-		touch $RAMFS_DIR/complete_dependency
+		> $RAMFS_DIR/complete_dependency
 		echo -e "\r"
 	elif [ -x $SYSROOT/usr/bin/pacman ];then
 		echo -n "These packages are needed.To make sure the bashrc will be executed successfully,you have to install them.\n\n$bashrc_deps"
@@ -42,7 +47,7 @@ elif [ ! -f $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ]
 	echo "Cannot check dependencies on the first time to start bash since boot.please make sure the required commands are valid."
 	echo "You can view $SYSROOT/etc/bash.bashrc to check which commands are needed."
 	echo "Running bash normally."
-	touch $RAMFS_DIR/complete_dependency
+	> $RAMFS_DIR/complete_dependency
 fi
 unset bashrc_deps
 SourcePATH=$PATH
@@ -468,10 +473,6 @@ trap "[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$" EXIT
 trap 'pre_exec' DEBUG
 if [ -z $SUDO_USER ]&&[ $$ -ne 1 ];then
 	eval $SYSTEM_FETCH
-fi
-PATHS_SAVE_FILE="$RAMFS_DIR/saved_paths.txt"
-if [ ! -f "$PATHS_SAVE_FILE" ]; then
-	touch "$PATHS_SAVE_FILE"
 fi
 # 后部命令部分结束
 # 别名部分
