@@ -1,6 +1,6 @@
 # ~/.bashrc: executed by bash(1) for non-login shells.
 # see $SYSROOT/usr/share/doc/bash/examples/startup-files (in the package bash-doc)
-[[ $- != *i* ]] && return # 非交互式情况下直接退出
+[[ $- != *i* ]] && return ||true # 非交互式情况下直接退出
 # 针对Arch Linux及其派生发行版以及基于pacman包管理的termux的开箱即用的bashrc.
 # BASHRC重要变量
 SYSROOT=""  # 留空就是/,主要为了适配termux
@@ -30,7 +30,6 @@ fi
 if [ ! -f "$PATHS_SAVE_FILE" ]; then
 	> "$PATHS_SAVE_FILE"
 fi
-
 bashrc_deps="pkgfile bash-completion bash ncurses bc tmux git"
 if [ -x $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
 	echo -n "Its the first time to start bash since boot,checking dependencies..."
@@ -103,7 +102,6 @@ else
 	echo "you can install extra/pkgfile with sudo pacman -Sy pkgfile."
 	echo "If you are not using Arch Linux(or any other pacman-based distribution),try to use other package searcher."
 fi
-
 # 前部命令部分结束
 # 函数定义部分
 timing(){ # 命令计时器
@@ -233,14 +231,16 @@ savepath() { # 保存绝对路径->代号
 	done
 	echo "bpath$number----bydpath-binding-to----$path" >> "$PATHS_SAVE_FILE"
 	echo "Path saved with number bpath$number"
-
 }
 rmpath() { # 删除代号
-	if [ $# -eq 0 ]|| [ "$1"x == --helpx ]; then
+	if [ "$1"x == --helpx ]; then
+		echo -e "Usage: rmpath [bpathnumber ...]\n\nThis function is to remove a saved path.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."
+		return 0
+	fi
+	if [ $# -eq 0 ]; then
 		echo -e "Usage: rmpath [bpathnumber ...]\n\nThis function is to remove a saved path.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."
 		return 1
 	fi
-
 	for number in "$@"; do
 		if $SYSROOT/usr/bin/grep $number $PATHS_SAVE_FILE >/dev/null 2>&1;then
 			$SYSROOT/usr/bin/sed -i "/^$number----bydpath-binding-to----/d" "$PATHS_SAVE_FILE"
@@ -253,6 +253,7 @@ rmpath() { # 删除代号
 lspath() { # 列出保存的绝对路径
 	[ "$1"x == --helpx ]&&echo -e "Usage:lspath\nThis function is provided to list saved path is the shared file.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number.]\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."
 	if [ ! -s "$PATHS_SAVE_FILE" ]; then
+		echo "No paths saved!" >&2
 		return 1
 	fi
 	$SYSROOT/usr/bin/cat "$PATHS_SAVE_FILE"
@@ -264,7 +265,7 @@ byd() { # 使命令支持绝对路径
 	local bpath_args=()
 	if [ "$cmd"a == a ]; then
 		echo -e "Usage: byd [command] [command-args]\n\nThis function is to make bpath is supported in normal commands.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."
-		return
+		return 1
 	fi
 	for arg in "$@"; do
 		if [[ "$arg" =~ ^bpath[0-9]+$ ]]; then
@@ -308,7 +309,7 @@ byd() { # 使命令支持绝对路径
 	eval ${args[@]}
 }
 clpath(){ # 清除保存的绝对路径
-	[ "$1"x == --helpx ]&&echo -e "Usage:clpath\n\nThis function is provided for clear saved paths.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."&&return
+	[ "$1"x == --helpx ]&&echo -e "Usage:clpath\n\nThis function is provided for clear saved paths.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."&&return 0
 	> "$PATHS_SAVE_FILE"
 	echo "Paths cleared."
 }
@@ -332,15 +333,15 @@ function cd(){ # 更好的cd
 	local bcd_remaining=()
 	for bcd_opt in $bcd_OPTS; do
 		case "$bcd_opt" in
-			-h ) local bcd_history_mode=1; shift ;;
-			-l ) local bcd_list=1;shift;;
-			-s ) local bcd_search=1;shift;;
-			-c ) local bcd_clear=1;shift;;
-			--help ) local bcd_help=1;shift ;;
-			-L ) local bcd_builtin_cd=1;bcd_builtin_opt+="L";shift ;;
-			-P ) local bcd_builtin_cd=1;bcd_builtin_opt+="P";shift;;
-			-e ) local bcd_builtin_cd=1;bcd_builtin_opt+="e";shift;;
-			-@ ) local bcd_builtin_cd=1;bcd_builtin_opt+="@";shift;;
+			-h ) bcd_history_mode=1; shift ;;
+			-l ) bcd_list=1;shift;;
+			-s ) bcd_search=1;shift;;
+			-c ) bcd_clear=1;shift;;
+			--help ) bcd_help=1;shift ;;
+			-L ) bcd_builtin_cd=1;bcd_builtin_opt+="L";shift ;;
+			-P ) bcd_builtin_cd=1;bcd_builtin_opt+="P";shift;;
+			-e ) bcd_builtin_cd=1;bcd_builtin_opt+="e";shift;;
+			-@ ) bcd_builtin_cd=1;bcd_builtin_opt+="@";shift;;
 			-- ) shift;;
 			* ) bcd_remaining+=($bcd_opt) ;;
 		esac
@@ -355,7 +356,7 @@ function cd(){ # 更好的cd
 	[ $count -gt 1 ]&&echo "-l -s -c should not be specified at the same time.">&2&&return 1
 	if [ $bcd_history_mode -eq 0 -a $bcd_builtin_cd -eq 0 ];then
 		if [ $bcd_list -eq 1 ];then
-			[ -s $RAMFS_DIR/"cdstack_$$" ]&&$SYSROOT/usr/bin/cat $RAMFS_DIR/"cdstack_$$"||echo "cd stack is empty!";return
+			[ -s $RAMFS_DIR/"cdstack_$$" ]&&$SYSROOT/usr/bin/cat $RAMFS_DIR/"cdstack_$$"||echo "cd stack is empty!";return 1
 		elif [ $bcd_search -eq 1 ];then
 			echo "-s should be spcified only when -h is spcified."
 			return 1
@@ -414,7 +415,7 @@ function loop(){ # bash自动循环执行命令
 			* ) [ $end_opt -ne 1 ]&&bloop_times=$(echo -n $bloop_opt|$SYSROOT/usr/bin/tr -d "'")||bloop_remaining+=($bloop_opt);;
 		esac
 	done
-	[ $bloop_help -eq 1 ]&&(echo -ne "Usage: loop [-u] [-t <times>] [command]\n\n	This function is used to execute a bash command for many times\n	Options:\n		-u don't return when command returned a non-zero value\n		-t <times> execute <command> for <times> times\n	<times> must be a integer.\n\nProvided by bydbash.")&&return 0
+	[ $bloop_help -eq 1 ]&&(echo -ne "Usage: loop [-u] [-t <times>] [command]\n\n	This function is used to execute a bash command for many times\n	Options:\n		-u don't stop when command returned a non-zero value\n		-t <times> execute <command> for <times> times\n	<times> must be a integer.\n\nProvided by bydbash.")&&return 0
 	[ -z "$(echo ${bloop_remaining[@]})" ]&&return 0
 	if [ $bloop_dont_exit_when_fail -eq 1 ];then
 		if [ $bloop_enable_times -eq 0 ];then
@@ -573,7 +574,6 @@ function _comp_bydbash_cd(){
 	fi
 	COMPREPLY+=($(compgen -W "$bpathcomp" -- $cur))
 	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
-
 }
 ## 补全函数结束
 complete -F _comp_command sudo
