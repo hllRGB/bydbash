@@ -55,7 +55,6 @@ SourcePATH=$PATH
 if [ -x $SYSROOT/usr/bin/pkgfile ];then
 	##. $SYSROOT/usr/share/doc/pkgfile/command-not-found.bash
 	command_not_found_handle () {
-		type -P thefuck>/dev/null 2>&1&&[ "$(type -t fuck)a" == aliasa ]&&(echo "detected thefuck,calling\n")&&fuck -- "$@"&&echo "\ncalling pkgfile"
 		local cmd=$1
 		local pkgs
 		local FUNCNEST=10
@@ -80,7 +79,7 @@ if [ -x $SYSROOT/usr/bin/pkgfile ];then
 			[[ $choice = [Qq] ]]&&return 1
 			[ -z $choice ]&&choice=1
 			if [[ $choice =~ ^[0-9]+$ ]] && (( choice > 0 && choice <= ${#pkgs[*]} )); then
-				local pkg=$(echo "${pkgs[choice - 1]}" | awk '{print $1}')
+				local pkg=$(echo "${pkgs[choice - 1]}" | $SYSROOT/ust/bin/awk '{print $1}')
 				type -P sudo > /dev/null 2>&1 &&sudo pacman -Sy --noconfirm -- "$pkg"||pacman -Sy --noconfirm -- "$pkg"
 				return
 			else
@@ -308,12 +307,12 @@ byd() { # 使命令支持绝对路径
 	fi
 	eval ${args[@]}
 }
-clpath(){ # 清除保存的绝对路径
+function clpath(){ # 清除保存的绝对路径
 	[ "$1"x == --helpx ]&&echo -e "Usage:clpath\n\nThis function is provided for clear saved paths.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."&&return 0
 	> "$PATHS_SAVE_FILE"
 	echo "Paths cleared."
 }
-cd_deldups(){ # 更好的cd的函数前置
+function cd_deldups(){ # 更好的cd的函数前置
 	local first_cmd=$($SYSROOT/usr/bin/tail -n 1 $1)
 	local sec_cmd=$($SYSROOT/usr/bin/tail -n 2 $1|$SYSROOT/usr/bin/sed '$d')
 	if [ "$first_cmd"x == "$sec_cmd"x ];then
@@ -321,7 +320,7 @@ cd_deldups(){ # 更好的cd的函数前置
 	fi
 }
 function cd(){ # 更好的cd
-	local bcd_OPTS=$($SYSROOT/usr/bin/getopt -o lchsLPe@ --long help -n 'cd' -- "$@")
+	local bcd_OPTS=$($SYSROOT/usr/bin/getopt -o HmlchsLPe@ --longoptions 'help history list search clear help mountpoint' -n 'cd' -- "$@")
 	if [ $? != 0 ];then echo "Please check if you gave invalid options." >&2 ; return 1 ;fi
 	local bcd_history_mode=0 
 	local bcd_list=0 
@@ -330,15 +329,17 @@ function cd(){ # 更好的cd
 	local bcd_help=0
 	local bcd_builtin_cd=0
 	local bcd_builtin_opt='-'
+	local bcd_mountpoint=0
 	local bcd_remaining=()
 	for bcd_opt in $bcd_OPTS; do
 		case "$bcd_opt" in
-			-h ) bcd_history_mode=1; shift ;;
-			-l ) bcd_list=1;shift;;
-			-s ) bcd_search=1;shift;;
-			-c ) bcd_clear=1;shift;;
-			--help ) bcd_help=1;shift ;;
-			-L ) bcd_builtin_cd=1;bcd_builtin_opt+="L";shift ;;
+			-h | --history ) bcd_history_mode=1; shift ;;
+			-l | --list ) bcd_list=1;shift;;
+			-s | --search ) bcd_search=1;shift;;
+			-c | --clear ) bcd_clear=1;shift;;
+			-H | --help ) bcd_help=1;shift ;;
+			-m | --mountpoint ) bcd_mountpoint=1;shift ;;
+			-L ) bcd_builtin_cd=1;bcd_builtin_opt+="L";shift;;
 			-P ) bcd_builtin_cd=1;bcd_builtin_opt+="P";shift;;
 			-e ) bcd_builtin_cd=1;bcd_builtin_opt+="e";shift;;
 			-@ ) bcd_builtin_cd=1;bcd_builtin_opt+="@";shift;;
@@ -347,13 +348,57 @@ function cd(){ # 更好的cd
 		esac
 	done
 	[ $bcd_builtin_opt == '-' ]&&bcd_builtin_opt='--'
-	[ $bcd_help == 1 ]&&echo -e "$(builtin cd --help)\n\n    bydbash cd options:\n	-h	history mode\n	-l	print cd stack/print cd history\n	-c	clear cd stack/clear cd history\n	-s	search in the cd history(only works when -h is specified)\n\n	-LPe@ takes precedence over bydbash cd options.If you specified them,bydbash cd options will not work.\n	-lsc cannot be specified at the same time.\n\n	Each time you executed cd (including bash autocd),the variable \$OLDPWD will be appended\n	to file \$CD_HISTFILE\n\nYou can cd back to the last history record by bydbash command "uncd".It will cd back to the last path in \$RAMFS_DIR/"cdstack_\$\$" and then delete it (the path).\n\nSpecify the -h option when you want to trigger cd history completion,\n although it has no real effect.\n\nProvided by bydbash."&&return 0
+	[ $bcd_help == 1 ]&&echo -e "$(builtin cd --help)\n\n    bydbash cd options:\n	-h|--history	history mode\n	-l|--list	print cd stack/print cd history\n	-c|--clear	clear cd stack/clear cd history\n	-s|--search	search in the cd history(only works when -h is specified)\n	-m|--mountpoint	find the mountpoint of a filesystem(like findmnt) and cd into it.\n		When This option is specified,cd will not work as normal.It can't process a directory.\n\n	-LPe@ takes precedence over bydbash cd options.If you specified them,bydbash cd options will not work.\n	-lsc cannot be specified at the same time.\n\n	Each time you executed cd (including bash autocd),the variable \$OLDPWD will be appended\n	to file \$CD_HISTFILE\n\nYou can cd back to the last history record by bydbash command "uncd".It will cd back to the last path in \$RAMFS_DIR/"cdstack_\$\$" and then delete it (the path).\n\nSpecify the -h option when you want to trigger cd history completion,\n although it has no real effect.\n\nProvided by bydbash."&&return 0
 	local bcd_vars=("bcd_list" "bcd_search" "bcd_clear")
 	local count=0
 	for var in "${bcd_vars[@]}"; do
 		[ "${!var}" -eq 1 ]&&((count++))
 	done
 	[ $count -gt 1 ]&&echo "-l -s -c should not be specified at the same time.">&2&&return 1
+	if [ $bcd_mountpoint -eq 1 ];then
+		local fs subvol fullpre=() fullpost=() targetpre=() targetpost=() mountpoint number=0 volnum=() do_grep=0 aifs=$IFS # 初始化
+		in=$(eval echo $bcd_remaining)           # 初始化
+		fs=$(echo -ne $in | $SYSROOT/usr/bin/awk -F"[" '{print $1}'); # 获取目标文件系统
+		subvol=$(echo -ne $in | $SYSROOT/usr/bin/awk -F"[" '{print "[" $2}') # 获取目标子卷
+		[ "$subvol" != "[" ]&&do_grep=1					# 有子卷则尝试匹配
+		IFS=$'\n' 
+		for line in $(eval $SYSROOT/usr/bin/findmnt -An $fs);do 	# 准备完整输出数组.
+			fullpre+=("$line")
+		done
+		[ -z "${fullpre[*]}" ]&&echo "cd: cannot find the mountpoint." >&2 &&return 1
+		IFS=$'\n' 
+		for line in $(eval $SYSROOT/usr/bin/findmnt -Ano TARGET $fs);do # 准备挂载点数组.
+			targetpre+=("$line")
+		done
+		if [ $do_grep -eq 1 ];then
+			for ((i=0;i<${#fullpre[@]};i++));do 			# 匹配:findmnt原完整输出中的某子卷挂载点.
+				[[ ${fullpre[$i]} =~ "$subvol" ]]&&volnum+=("$i")&&fullpost+=("${fullpre[$i]}")         # 使用数组支持单字卷多挂载点.
+			done
+			for ((i=0;i<${#volnum[@]};i++));do
+				targetpost+=("${targetpre[${volnum[$i]}]}")
+			done
+		else
+			fullpost=("${fullpre[@]}")
+			targetpost=("${targetpre[@]}")
+		fi
+		IFS=$aifs
+		unset fullpre targetpre aifs
+		[ -z "${fullpost[*]}" ]&&echo "cd: cannot find the mountpoint.">&2&&return 1
+		if [ ${#fullpost[*]} -gt 1 ];then
+			for ((i=0;i < ${#fullpost[*]};i++));do
+				echo "\e[1;31m${i} \e[1;34m- \e[1;35m${fullpost[$i]}"
+			done
+			read -rep "$(echo -e "\n\e[1;34mWhich mountpoint do you want to select? \e[1;35m(Enter the number,default 0) \e[1;32m===>\e[m")" number
+			([[ "$number" =~ ^[0-9]+$ ]]||[ -z $number ])||(echo "Please enter a number.">&2&&return 1)
+			[[ -n ${targetpost[$number]} ]]||(echo "Please enter a valid number.">&2&&return 1)
+		fi
+		mountpoint="'${targetpost[$number]}'"
+		echo "Will cd to found mountpoint: \e[1;32m$mountpoint\e[m"
+		eval "builtin cd $mountpoint"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo $PWD >> $CD_HISTFILE
+		cd_deldups "$CD_HISTFILE"
+		[ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
+		return
+	fi
 	if [ $bcd_history_mode -eq 0 -a $bcd_builtin_cd -eq 0 ];then
 		if [ $bcd_list -eq 1 ];then
 			[ -s $RAMFS_DIR/"cdstack_$$" ]&&$SYSROOT/usr/bin/cat $RAMFS_DIR/"cdstack_$$"||echo "cd stack is empty!";return 1
@@ -382,9 +427,13 @@ function cd(){ # 更好的cd
 		eval "builtin cd $bcd_builtin_opt ${bcd_remaining[@]}"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
 		cd_deldups "$CD_HISTFILE"
 		[ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
+		return 0
 	else
 		echo "$bpath"
 		eval "builtin cd $bcd_builtin_opt '$bpath'"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
+		cd_deldups "$CD_HISTFILE"
+		[ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
+		return 0
 	fi
 }
 function uncd(){ # cd的撤回系统
@@ -541,6 +590,12 @@ function _comp_bydbash_cd(){
 	local cur prev opts
 	cur="${COMP_WORDS[COMP_CWORD]}"
 	_get_comp_words_by_ref cur prev words cword
+	if $SYSROOT/usr/bin/getopt -o m -- "$prev" >/dev/null 2>&1 && $SYSROOT/usr/bin/getopt -o m -- "$prev" 2>/dev/null | $SYSROOT/usr/bin/grep -- -m 2>/dev/null >&2;then
+		local DEV_MPOINT
+		DEV_MPOINT=$($SYSROOT/usr/bin/findmnt -rno TARGET,SOURCE)
+		COMPREPLY=( $(compgen -W "$DEV_MPOINT" -- $cur) )
+		return 0
+	else
 	if $SYSROOT/usr/bin/getopt -o h -- "$prev"  >/dev/null 2>&1  && $SYSROOT/usr/bin/getopt -o h -- "$prev" 2>/dev/null| $SYSROOT/usr/bin/grep -- -h 2>/dev/null >&2;then
 		local do_histcomp=set
 	fi
@@ -574,6 +629,8 @@ function _comp_bydbash_cd(){
 	fi
 	COMPREPLY+=($(compgen -W "$bpathcomp" -- $cur))
 	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
+	fi
+	return 0
 }
 ## 补全函数结束
 complete -F _comp_command sudo
