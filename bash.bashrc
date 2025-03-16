@@ -257,12 +257,12 @@ lspath() { # 列出保存的绝对路径
 	fi
 	$SYSROOT/usr/bin/cat "$PATHS_SAVE_FILE"
 }
-byd() { # 使命令支持绝对路径
+function byd() { # 使命令支持绝对路径
 	local cmd="$1"
-	#shift
+	shift
 	local args=()
 	local bpath_args=()
-	if [ "$cmd"a == a ]; then
+	if [ -z "$cmd" ]; then
 		echo -e "Usage: byd [command] [command-args]\n\nThis function is to make bpath is supported in normal commands.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."
 		return 1
 	fi
@@ -305,7 +305,7 @@ byd() { # 使命令支持绝对路径
 		fi
 		unset confirm
 	fi
-	eval ${args[@]}
+	eval $cmd "${args[@]}"
 }
 function clpath(){ # 清除保存的绝对路径
 	[ "$1"x == --helpx ]&&echo -e "Usage:clpath\n\nThis function is provided for clear saved paths.\nTo save a path,use savepath [file or dir].\nTo remove a path,use rmpath [bpath number].\nTo list saved paths,use lspath.\nTo make bpath is supported in normal commands,use byd [command] [command args].\n\nProvided by bydbash."&&return 0
