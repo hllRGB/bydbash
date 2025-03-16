@@ -362,12 +362,12 @@ function cd(){ # 更好的cd
 		subvol=$(echo -ne $in | $SYSROOT/usr/bin/awk -F"[" '{print "[" $2}') # 获取目标子卷
 		[ "$subvol" != "[" ]&&do_grep=1					# 有子卷则尝试匹配
 		IFS=$'\n' 
-		for line in $(eval $SYSROOT/usr/bin/findmnt -An $fs);do 	# 准备完整输出数组.
+		for line in $(eval $SYSROOT/usr/bin/findmnt -Arn $fs);do 	# 准备完整输出数组.
 			fullpre+=("$line")
 		done
 		[ -z "${fullpre[*]}" ]&&echo "cd: cannot find the mountpoint." >&2 &&return 1
 		IFS=$'\n' 
-		for line in $(eval $SYSROOT/usr/bin/findmnt -Ano TARGET $fs);do # 准备挂载点数组.
+		for line in $(eval $SYSROOT/usr/bin/findmnt -Arno TARGET $fs);do # 准备挂载点数组.
 			targetpre+=("$line")
 		done
 		if [ $do_grep -eq 1 ];then
