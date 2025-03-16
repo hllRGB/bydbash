@@ -79,7 +79,7 @@ if [ -x $SYSROOT/usr/bin/pkgfile ];then
 			[[ $choice = [Qq] ]]&&return 1
 			[ -z $choice ]&&choice=1
 			if [[ $choice =~ ^[0-9]+$ ]] && (( choice > 0 && choice <= ${#pkgs[*]} )); then
-				local pkg=$(echo "${pkgs[choice - 1]}" | $SYSROOT/ust/bin/awk '{print $1}')
+				local pkg=$(echo "${pkgs[choice - 1]}" | $SYSROOT/usr/bin/awk '{print $1}')
 				type -P sudo > /dev/null 2>&1 &&sudo pacman -Sy --noconfirm -- "$pkg"||pacman -Sy --noconfirm -- "$pkg"
 				return
 			else
