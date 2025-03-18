@@ -359,7 +359,7 @@ function cd(){ # 更好的cd
 		local fs subvol fullpre=() fullpost=() targetpre=() targetpost=() mountpoint number=0 volnum=() do_grep=0 aifs=$IFS # 初始化
 		in=$(eval echo $bcd_remaining)           # 初始化
 		fs=$(echo -ne $in | $SYSROOT/usr/bin/awk -F"[" '{print $1}'); # 获取目标文件系统
-		subvol=$(echo -ne $in | $SYSROOT/usr/bin/awk -F"[" '{print "[" $2}') # 获取目标子卷
+		subvol=$(echo $in | $SYSROOT/usr/bin/awk -F"[" '{print "[" $2}') # 获取目标子卷
 		[ "$subvol" != "[" ]&&do_grep=1					# 有子卷则尝试匹配
 		IFS=$'\n' 
 		for line in $(eval $SYSROOT/usr/bin/findmnt -Arn $fs);do 	# 准备完整输出数组.
