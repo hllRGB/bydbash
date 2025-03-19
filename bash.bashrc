@@ -356,7 +356,7 @@ function cd(){ # 更好的cd
 	done
 	[ $count -gt 1 ]&&echo "-l -s -c should not be specified at the same time.">&2&&return 1
 	if [ $bcd_mountpoint -eq 1 ];then
-		local fs subvol fullpre=() fullpost=() targetpre=() targetpost=() mountpoint number=0 volnum=() do_grep=0 aifs=$IFS # 初始化
+		local in fs subvol fullpre=() fullpost=() targetpre=() targetpost=() mountpoint number=0 volnum=() do_grep=0 aifs=$IFS # 初始化
 		in=$(eval echo $bcd_remaining)           # 初始化
 		fs=$(echo -ne $in | $SYSROOT/usr/bin/awk -F"[" '{print $1}'); # 获取目标文件系统
 		subvol=$(echo $in | $SYSROOT/usr/bin/awk -F"[" '{print "[" $2}') # 获取目标子卷
@@ -382,7 +382,7 @@ function cd(){ # 更好的cd
 			targetpost=("${targetpre[@]}")
 		fi
 		IFS=$aifs
-		unset fullpre targetpre aifs
+		unset fullpre targetpre aifs in subvol
 		[ -z "${fullpost[*]}" ]&&echo "cd: cannot find the mountpoint.">&2&&return 1
 		if [ ${#fullpost[*]} -gt 1 ];then
 			for ((i=0;i < ${#fullpost[*]};i++));do
