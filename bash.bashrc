@@ -513,18 +513,6 @@ post_exec(){ # 命令执行之后由PROMPT_COMMAND触发的函数
 	in_init=0
 }
 # 函数部分结束
-# 后部命令部分
-history -a # 命令计时器
-pre_histsize=$($SYSROOT/usr/bin/stat -c%s $HISTFILE)
-post_histsize=$pre_histsize ##
-[ -f $HOME/.bashrc ]&&source $HOME/.bashrc||true
-PROMPT_COMMAND=post_exec
-trap "[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$" EXIT
-trap 'pre_exec' DEBUG
-if [ -z $SUDO_USER ]&&[ $$ -ne 1 ];then
-	eval $SYSTEM_FETCH
-fi
-# 后部命令部分结束
 # 别名部分
 if [ -x $SYSROOT/usr/bin/dircolors ]; then
 	test -r ~/.dircolors && eval "$($SYSROOT/usr/bin/dircolors -b ~/.dircolors)" || eval "$($SYSROOT/usr/bin/dircolors -b)"
@@ -656,3 +644,16 @@ bind 'set colored-completion-prefix on'
 bind 'set menu-complete-display-prefix on'
 bind -x '"\C-x\C-t": tmuxmgr'
 # bind部分结束
+# # 后部命令部分
+history -a # 命令计时器
+pre_histsize=$($SYSROOT/usr/bin/stat -c%s $HISTFILE)
+post_histsize=$pre_histsize ##
+[ -f $HOME/.bashrc ]&&source $HOME/.bashrc||true
+PROMPT_COMMAND=post_exec
+trap "[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$" EXIT
+trap 'pre_exec' DEBUG
+if [ -z $SUDO_USER ]&&[ $$ -ne 1 ];then
+	eval $SYSTEM_FETCH
+fi
+# 后部命令部分结束
+
