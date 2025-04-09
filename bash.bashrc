@@ -481,7 +481,7 @@ function loop(){ # bash自动循环执行命令
 	fi
 }
 pre_exec(){ # 命令执行之前由trap触发的函数
-	[ -z $preexec  ]&&[ "$BASH_COMMAND" != "post_exec" ]&&bashcommand="$BASH_COMMAND"
+	[ -z $preexec  ]&&[ "$BASH_COMMAND" != "post_exec" ]&&[ $in_init == 0 ]&&bashcommand="$BASH_COMMAND"
 	preexec=1
 	[ "$in_timing"x == yesx ]||timing pre
 }
@@ -635,10 +635,10 @@ pre_histsize=$($SYSROOT/usr/bin/stat -c%s $HISTFILE)
 post_histsize=$pre_histsize ##
 [ -f $HOME/.bashrc ]&&source $HOME/.bashrc||true
 PROMPT_COMMAND=post_exec
-trap "[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$" EXIT
-trap 'pre_exec' DEBUG
 if [ -z $SUDO_USER ]&&[ $$ -ne 1 ];then
 	eval $SYSTEM_FETCH
 fi
+trap "[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$" EXIT
+trap 'pre_exec' DEBUG
 # 后部命令部分结束
 
