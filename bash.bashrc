@@ -297,6 +297,12 @@ function clpath(){ # 清除保存的绝对路径
 	> "$PATHS_SAVE_FILE"
 	echo "Paths cleared."
 }
+function title(){
+	[ -z $set_title ]&&set_title=1&&echo "You've been manually set the title.\nThe varible set_title was set to 1.\nYou can unset it to enable automatically title setting."
+	echo -ne "\e]0;"
+	echo -n "$@"
+	echo -ne "\007"
+}
 function cd_deldups(){ # 更好的cd的函数前置
 	local first_cmd=$($SYSROOT/usr/bin/tail -n 1 $1)
 	local sec_cmd=$($SYSROOT/usr/bin/tail -n 2 $1|$SYSROOT/usr/bin/sed '$d')
@@ -484,6 +490,7 @@ pre_exec(){ # 命令执行之前由trap触发的函数
 	[ -z $preexec  ]&&[ "$BASH_COMMAND" != "post_exec" ]&&[ $in_init == 0 ]&&bashcommand="$BASH_COMMAND"
 	preexec=1
 	[ "$in_timing"x == yesx ]||timing pre
+	[ -z $set_title ]&&echo -ne "\e]0;Proc: $bashcommand\007"
 }
 post_exec(){ # 命令执行之后由PROMPT_COMMAND触发的函数
 	ret=$?
@@ -495,6 +502,7 @@ post_exec(){ # 命令执行之后由PROMPT_COMMAND触发的函数
 	time2=$($SYSROOT/usr/bin/date +%T|$SYSROOT/usr/bin/awk -F":" {'print $3'})
 	PATH="$(pwd):$SourcePATH"
 	unset preexec
+	[ -z $set_title ]&&echo "\e]0;Interactive bash [$(whoami)@$HOSTNAME]\007"
 	in_init=0
 }
 # 函数部分结束
