@@ -32,12 +32,12 @@ if [ ! -f "$PATHS_SAVE_FILE" ]; then
 fi
 bashrc_deps="pkgfile bash-completion bash ncurses bc tmux git"
 if [ -x $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ];then
-	echo -n "Its the first time to start bash since boot,checking dependencies..."
+	echo -n "Its the first time to start bash since boot,checking dependencies...\r"
 	if pacman -Qq $bashrc_deps > /dev/null 2>&1;then
 		> $RAMFS_DIR/complete_dependency
-		echo -e "\r"
+		echo -n "\e[K"
 	elif [ -x $SYSROOT/usr/bin/pacman ];then
-		echo -n "These packages are needed.To make sure the bashrc will be executed successfully,you have to install them.\n\n$bashrc_deps"
+		echo -n "These packages are required.To make sure the bashrc will be executed successfully,you have to install them.\n\n$bashrc_deps"
 		type -P sudo&&sudo pacman -Sy $bashrc_deps --neede --overwrite '*'||pacman -Sy $bashrc_deps --neede --overwrite '*'
 		type -P sudo&&sudo pkgfile --update||pkgfile --update
 		echo -e "\r"
