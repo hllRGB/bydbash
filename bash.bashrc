@@ -502,7 +502,7 @@ post_exec(){ # 命令执行之后由PROMPT_COMMAND触发的函数
 	time2=$($SYSROOT/usr/bin/date +%T|$SYSROOT/usr/bin/awk -F":" {'print $3'})
 	PATH="$(pwd):$SourcePATH"
 	unset preexec
-	[ -z $set_title ]&&echo "\e]0;Interactive bash [$(whoami)@$HOSTNAME]\007"
+	[ -z $set_title ]&&echo -n "\e]0;Interactive bash [$(whoami)@$HOSTNAME]\007"
 	in_init=0
 }
 # 函数部分结束
