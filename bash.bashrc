@@ -380,8 +380,8 @@ function cd(){ # 更好的cd
 				echo "\e[1;31m${i} \e[1;34m- \e[1;35m${fullpost[$i]}"
 			done
 			read -rep "$(echo -e "\n\e[1;34mWhich mountpoint do you want to select? \e[1;35m(Enter the number,default 0) \e[1;32m===>\e[m")" number
-			([[ "$number" =~ ^[0-9]+$ ]]||[ -z $number ])||(echo "Please enter a number.">&2&&return 1)
-			[[ -n ${targetpost[$number]} ]]||(echo "Please enter a valid number.">&2&&return 1)
+			if ! ([[ "$number" =~ ^[0-9]+$ ]]||[ -z $number ]) ;then echo "Please enter a number.">&2;return 1;fi
+			if ! [[ -n ${targetpost[$number]} ]];then echo "Please enter a valid number.">&2;return 1;fi
 		fi
 		mountpoint="'${targetpost[$number]}'"
 		echo "Will cd to found mountpoint: \e[1;32m$mountpoint\e[m"
