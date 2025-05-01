@@ -623,7 +623,7 @@ complete -o default -o nospace -F _comp_bydbash_lspath rmpath
 complete -o default -o nospace -F _comp_complete_longopt savepath
 # 补全部分结束
 # 命令提示符部分
-PS1="\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&$SYSROOT/usr/bin/tput blink&&echo -n ':'&&$SYSROOT/usr/bin/tput sgr0&&echo -n $time2 $([ $UID = 0 ]&&$SYSROOT/usr/bin/tput smul&&$SYSROOT/usr/bin/tput blink&&echo -n \[\033[1\;31m\]$(whoami)&&$SYSROOT/usr/bin/tput sgr0||echo \[\033[1\;34m\]$(whoami)))\[\033[1;31m\]@\[\033[34m\]\h \[\033[33m\]\w\[\033[31m\]]\[\033[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\033[1\;32m\]||echo \[\033[1\;31m\]$ret)\$>>_\[\e[m\] '
+PS1='\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&$SYSROOT/usr/bin/tput blink&&echo -n ':'&&$SYSROOT/usr/bin/tput sgr0&&echo -n $time2 $([ $UID = 0 ]&&$SYSROOT/usr/bin/tput smul&&$SYSROOT/usr/bin/tput blink&&echo -n \[\033[1\;31m\]$(whoami)&&$SYSROOT/usr/bin/tput sgr0||echo \[\033[1\;34m\]$(whoami)))\[\033[1;31m\]@\[\033[34m\]\h \[\033[33m\]\w\[\033[31m\]]\[\033[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\033[1\;32m\]||echo \[\033[1\;31m\]$ret)\$>>_\[\e[m\] '
 PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>$(echo -n \[\033[m\])'
 PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > $(echo -n \[\033[m\])'
 PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> $(echo -n \[\033[m\])'
