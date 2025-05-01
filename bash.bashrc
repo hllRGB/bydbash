@@ -63,12 +63,12 @@ if [ -x $SYSROOT/usr/bin/pkgfile ];then
 		if (( ${#pkgs[*]} > 0 )); then
 			echo "$cmd may be found in the following packages:"
 			for ((i = 0; i < ${#pkgs[@]}; i++)); do
-				echo "\033[1;34m$((i + 1)). ${pkgs[$i]}\033[m"
+				echo "\e[1;34m$((i + 1)). ${pkgs[$i]}\e[m"
 			done
 		fi
 		if (( ${#pkgs[*]} == 1 )); then
 			local pkg=${pkgs[0]%% *}
-			local reading=$(echo "Install \033[1;34m$pkg\033[m? [\033[1;32mY\033[m/\033[1;31mn\033[m] ===> ")
+			local reading=$(echo "Install \e[1;34m$pkg\e[m? [\e[1;32mY\e[m/\e[1;31mn\e[m] ===> ")
 			read -rp "$reading" response
 			[[ -z $response || $response = [Yy] ]] || return 0
 			printf '\n'
@@ -117,12 +117,12 @@ timing_post(){ # 命令计时器
 	#local command_to_execute=$(history 1 | $SYSROOT/usr/bin/sed 's/^ *[0-9]\+ *//')
 	local elapsed_time_sec=$(echo "scale=2; $elapsed_time_ns / 1000000000" | $SYSROOT/usr/bin/bc)
 	if [ $ret == 0 ];then
-		echo -e "\033[1;32m"
+		echo -e "\e[1;32m"
 	else
-		echo -e "\033[1;31m"
+		echo -e "\e[1;31m"
 	fi
 	echo -En "$bashcommand: ${elapsed_time_sec} s"
-	echo -e "\033[m"
+	echo -e "\e[m"
 	unset start_time
 	unset end_time
 	unset in_timing
@@ -138,7 +138,7 @@ tmuxmgr() { # tmux工具
 		$SYSROOT/usr/bin/tmux new-session -s bash
 		return 0
 	else
-		echo "\033[1;32m$(tmux ls)\033[m"
+		echo "\e[1;32m$(tmux ls)\e[m"
 	fi
 	echo "Choose a(ttach), n(ew), k(ill), q(uit)(also exit): "
 	read -rsn1 mode
@@ -190,7 +190,7 @@ git_current_branch(){ # git分支显示
 		ref=$($SYSROOT/usr/bin/git rev-parse --short HEAD 2>/dev/null) || return
 	fi
 	if [ "$1" == "yes" ];then
-		echo="-\033[1;31m[\033[m${ref#refs/heads/}\033[1;31m]\033[m"
+		echo="-\e[1;31m[\e[m${ref#refs/heads/}\e[1;31m]\e[m"
 	else 
 		echo="-[${ref#refs/heads/}]"
 	fi
@@ -623,7 +623,7 @@ complete -o default -o nospace -F _comp_bydbash_lspath rmpath
 complete -o default -o nospace -F _comp_complete_longopt savepath
 # 补全部分结束
 # 命令提示符部分
-PS1='\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&$SYSROOT/usr/bin/tput blink&&echo -n ':'&&$SYSROOT/usr/bin/tput sgr0&&echo -n $time2 $([ $UID = 0 ]&&$SYSROOT/usr/bin/tput smul&&$SYSROOT/usr/bin/tput blink&&echo -n \[\033[1\;31m\]$(whoami)&&$SYSROOT/usr/bin/tput sgr0||echo \[\033[1\;34m\]$(whoami)))\[\033[1;31m\]@\[\033[34m\]\h \[\033[33m\]\w\[\033[31m\]]\[\033[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\033[1\;32m\]||echo \[\033[1\;31m\]$ret)\$>>_\[\e[m\] '
+PS1="\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&$SYSROOT/usr/bin/tput blink&&echo -n ':'&&$SYSROOT/usr/bin/tput sgr0&&echo -n $time2 $([ $UID = 0 ]&&$SYSROOT/usr/bin/tput smul&&$SYSROOT/usr/bin/tput blink&&echo -n \[\033[1\;31m\]$(whoami)&&$SYSROOT/usr/bin/tput sgr0||echo \[\033[1\;34m\]$(whoami)))\[\033[1;31m\]@\[\033[34m\]\h \[\033[33m\]\w\[\033[31m\]]\[\033[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\033[1\;32m\]||echo \[\033[1\;31m\]$ret)\$>>_\[\e[m\] '
 PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>$(echo -n \[\033[m\])'
 PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > $(echo -n \[\033[m\])'
 PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> $(echo -n \[\033[m\])'
