@@ -50,8 +50,6 @@ elif [ ! -f $SYSROOT/usr/bin/pacman ] && [ ! -f $RAMFS_DIR/complete_dependency ]
 fi
 unset bashrc_deps
 SourcePATH=$PATH
-# make less more friendly for non-text input files, see lesspipe(1)
-[ -x $SYSROOT/usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
 if [ -x $SYSROOT/usr/bin/pkgfile ];then
 	##. $SYSROOT/usr/share/doc/pkgfile/command-not-found.bash
 	command_not_found_handle () {
@@ -412,8 +410,8 @@ function cd(){ # 更好的cd
 		fi
 	fi
 	local bpath
-	bpath=$(echo -ne $bcd_remaining|$SYSROOT/usr/bin/sed s/\'//g)
-	bpath=$($SYSROOT/usr/bin/grep "^$bpath----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')
+	bpath="$(echo -ne "${bcd_remaining[@]}"|$SYSROOT/usr/bin/sed s/\'//g)"
+	[[ "$bpath" =~ bpath.* ]]&&bpath=$($SYSROOT/usr/bin/grep "^$bpath----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')||bpath=""
 	if [ -z "$bpath" ];then
 		eval "builtin cd $bcd_builtin_opt ${bcd_remaining[@]}"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
 		cd_deldups "$CD_HISTFILE"
@@ -457,17 +455,18 @@ function loop(){ # bash自动循环执行命令
 	done
 	[ $bloop_help -eq 1 ]&&(echo -ne "Usage: loop [-u] [-t <times>] [command]\n\n	This function is used to execute a bash command for many times\n	Options:\n		-u don't stop when command returned a non-zero value\n		-t <times> execute <command> for <times> times\n	<times> must be a integer.\n\nProvided by bydbash.")&&return 0
 	[ -z "$(echo ${bloop_remaining[@]})" ]&&return 0
+	local bloop_cmd="$(echo ${bloop_remaining[@]}|$SYSROOT/usr/bin/tr -d "'")"
 	if [ $bloop_dont_exit_when_fail -eq 1 ];then
 		if [ $bloop_enable_times -eq 0 ];then
-			while true;do eval "$(echo ${bloop_remaining[@]}|tr -d "'")";done
+			while true;do eval "$bloop_cmd";done
 		else
 			for (( i=1; i<=$bloop_times; i++));do
-				eval "$(echo ${bloop_remaining[@]}|$SYSROOT/usr/bin/tr -d "'")"
+				eval "$bloop_cmd"
 			done
 		fi
 	elif [ $bloop_enable_times -eq 0 ];then
 		while true;do 
-			eval "$(echo ${bloop_remaining[@]}|$SYSROOT/usr/bin/tr -d "'")"
+			eval "$bloop_cmd"
 			local returning=$?
 			if [ $returning -ne 0 ];then 
 				break
@@ -477,7 +476,7 @@ function loop(){ # bash自动循环执行命令
 	else
 		for ((i=1;i <= $bloop_times;i++))
 		do 
-			eval "$(echo ${bloop_remaining[@]}|$SYSROOT/usr/bin/tr -d "'")"
+			eval "$bloop_cmd"
 			returning=$?
 			if [ $returning -ne 0 ];then
 				break
@@ -623,7 +622,7 @@ complete -o default -o nospace -F _comp_bydbash_lspath rmpath
 complete -o default -o nospace -F _comp_complete_longopt savepath
 # 补全部分结束
 # 命令提示符部分
-PS1='\[\e[m\]┌─\[\033[1;31m\][\[\033[m\]$0-$$ $(echo -n $time1&&$SYSROOT/usr/bin/tput blink&&echo -n ':'&&$SYSROOT/usr/bin/tput sgr0&&echo -n $time2 $([ $UID = 0 ]&&$SYSROOT/usr/bin/tput smul&&$SYSROOT/usr/bin/tput blink&&echo -n \[\033[1\;31m\]$(whoami)&&$SYSROOT/usr/bin/tput sgr0||echo \[\033[1\;34m\]$(whoami)))\[\033[1;31m\]@\[\033[34m\]\h \[\033[33m\]\w\[\033[31m\]]\[\033[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\033[1\;32m\]||echo \[\033[1\;31m\]$ret)\$>>_\[\e[m\] '
+PS1='\[\e[m\]┌─\[\e[1;31m\][\[\e[m\]$0-$$ $(echo -n "$time1\[\e[25m\]:\[\e[m\]$time2" $([ $UID = 0 ]&&echo -n \[\e[4m\]\[\e[5m\]\[\e[1\;31m\]$(whoami)\[\e[m\]||echo \[\e[1\;34m\]$(whoami)))\[\e[1;31m\]@\[\e[34m\]\h \[\e[33m\]\w\[\e[31m\]]\[\e[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\e[1\;32m\]||echo \[\e[1\;31m\]$ret)\$>>_\[\e[m\] '
 PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>$(echo -n \[\033[m\])'
 PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > $(echo -n \[\033[m\])'
 PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> $(echo -n \[\033[m\])'
