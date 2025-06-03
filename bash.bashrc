@@ -333,7 +333,7 @@ function cd(){ # 更好的cd
 			-e ) bcd_builtin_cd=1;bcd_builtin_opt+="e";shift;;
 			-@ ) bcd_builtin_cd=1;bcd_builtin_opt+="@";shift;;
 			-- ) shift;;
-			* ) bcd_remaining+=($bcd_opt) ;;
+			* ) bcd_remaining+=("$bcd_opt") ;shift ;;
 		esac
 	done
 	[ $bcd_builtin_opt == '-' ]&&bcd_builtin_opt='--'
@@ -383,7 +383,7 @@ function cd(){ # 更好的cd
 		fi
 		mountpoint="'${targetpost[$number]}'"
 		echo "Will cd to found mountpoint: \e[1;32m$mountpoint\e[m"
-		eval "builtin cd $mountpoint"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo $PWD >> $CD_HISTFILE
+		builtin cd "$mountpoint"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo $PWD >> $CD_HISTFILE
 		cd_deldups "$CD_HISTFILE"
 		[ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
 		return
@@ -413,13 +413,13 @@ function cd(){ # 更好的cd
 	bpath="$(echo -ne "${bcd_remaining[@]}"|$SYSROOT/usr/bin/sed s/\'//g)"
 	[[ "$bpath" =~ bpath.* ]]&&bpath=$($SYSROOT/usr/bin/grep "^$bpath----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')||bpath=""
 	if [ -z "$bpath" ];then
-		eval "builtin cd $bcd_builtin_opt ${bcd_remaining[@]}"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
+		eval builtin cd $bcd_builtin_opt ${bcd_remaining[@]}&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
 		cd_deldups "$CD_HISTFILE"
 		[ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
 		return 0
 	else
 		echo "$bpath"
-		eval "builtin cd $bcd_builtin_opt '$bpath'"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
+		eval builtin cd $bcd_builtin_opt \'$bpath\'&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
 		cd_deldups "$CD_HISTFILE"
 		[ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
 		return 0
@@ -453,24 +453,27 @@ function loop(){ # bash自动循环执行命令
 			* ) [ $end_opt -ne 1 ]&&bloop_times=$(echo -n $bloop_opt|$SYSROOT/usr/bin/tr -d "'")||bloop_remaining+=($bloop_opt);;
 		esac
 	done
-	[ $bloop_help -eq 1 ]&&(echo -ne "Usage: loop [-u] [-t <times>] [command]\n\n	This function is used to execute a bash command for many times\n	Options:\n		-u don't stop when command returned a non-zero value\n		-t <times> execute <command> for <times> times\n	<times> must be a integer.\n\nProvided by bydbash.")&&return 0
+	[ $bloop_help -eq 1 ]&&(echo -ne "Usage: loop [-u] [-t <times>] [command]\n\n	This function is used to execute a bash command for many times\n	Options:\n		-u don't stop when command returned a non-zero value\n		-t <times> execute <command> for <times> times\n	<times> must be a integer.\n\nProvided by bydbash.\n")&&return 0
 	[ -z "$(echo ${bloop_remaining[@]})" ]&&return 0
-	local bloop_cmd="$(echo ${bloop_remaining[@]}|$SYSROOT/usr/bin/tr -d "'")"
+	local bloop_cmd="${bloop_remaining[@]//\'/}"
 	if [ $bloop_dont_exit_when_fail -eq 1 ];then
 		if [ $bloop_enable_times -eq 0 ];then
-			while true;do eval "$bloop_cmd";done
+			for((;;)){ eval "$bloop_cmd"; }
 		else
 			for (( i=1; i<=$bloop_times; i++));do
 				eval "$bloop_cmd"
 			done
 		fi
 	elif [ $bloop_enable_times -eq 0 ];then
-		while true;do 
+		while true 
+		do
+		{
 			eval "$bloop_cmd"
 			local returning=$?
 			if [ $returning -ne 0 ];then 
 				break
 			fi
+		}
 		done
 		return $returning
 	else
@@ -580,23 +583,26 @@ function _comp_bydbash_cd(){
 		local do_histcomp=set
 	fi
 	if [[ "$do_histcomp"x = "set"x ]]&&[ ! -z $cur ];then
-		compopt -o dirnames 
+		compopt -o filenames
+		compopt +o dirnames 
 		compopt -o plusdirs
+		compopt +o noquote
 		local histcomp
 		local ifs=$IFS
 		local i=0
 		IFS=$'\n'
 		for line in $([ -f $CD_HISTFILE ]&&$SYSROOT/usr/bin/grep "$cur" "$CD_HISTFILE");do
-			COMPREPLY+=("$line")
+			[ -d "$line" ]&&COMPREPLY+=("$line")
 			i=$((i + 1))
 		done
 		IFS=$ifs
 		unset do_histcomp
 	else
 		_comp_cmd_cd
-		compopt +o filenames
-		compopt -o dirnames
+		compopt -o filenames
+		compopt +o dirnames
 		compopt -o plusdirs
+		compopt +o noquote
 		local new_completions=()
 		local item
 		for item in "${COMPREPLY[@]}"; do
@@ -605,7 +611,7 @@ function _comp_bydbash_cd(){
 			fi
 			new_completions+=("$item")
 		done
-		COMPREPLY=("${new_completions[@]}")
+		COMPREPLY=("${new_completions[*]}")
 	fi
 	COMPREPLY+=($(compgen -W "$bpathcomp" -- $cur))
 	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
@@ -640,7 +646,7 @@ bind -x '"\C-x\C-t": tmuxmgr'
 history -a # 命令计时器
 pre_histsize=$($SYSROOT/usr/bin/stat -c%s $HISTFILE)
 post_histsize=$pre_histsize ##
-[ -f $HOME/.bashrc ]&&source $HOME/.bashrc||true
+# [ -f $HOME/.bashrc ]&&source $HOME/.bashrc||true
 PROMPT_COMMAND=post_exec
 if [ -z $SUDO_USER ]&&[ $$ -ne 1 ];then
 	eval $SYSTEM_FETCH
