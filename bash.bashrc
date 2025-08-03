@@ -498,9 +498,9 @@ smart_pwd_get(){
 	local colorhome="\e[1;35m~\e[0;32m"
 	IFS='/'
 	if [ "${bpfold_in}" != "/" ]&&[ "${bpfold_in}" != "${HOME}" ]; then
-		local bpfold_colorout="${bpfold_in/#~/${colorhome}}"
+		local bpfold_colorout="${bpfold_in/#${HOME}/${colorhome}}"
 		unset colorhome
-		bpfold_in="${bpfold_in/#~/\~}"
+		bpfold_in="${bpfold_in/#${HOME}/\~}"
 		IFS='/' elements=($bpfold_colorout) #分片
 		IFS='/' ckments=($bpfold_in)
 		local len=${#elements[@]}
