@@ -99,6 +99,7 @@ else
 	echo "you can install extra/pkgfile with sudo pacman -Sy pkgfile."
 	echo "If you are not using Arch Linux(or any other pacman-based distribution),try to use other package searcher."
 fi
+bpfold_oldpwd="none"
 # 前部命令部分结束
 # 函数定义部分
 timing(){ # 命令计时器
@@ -361,7 +362,7 @@ function cd(){ # 更好的cd
 		done
 		if [ $do_grep -eq 1 ];then
 			for ((i=0;i<${#fullpre[@]};i++));do 			# 匹配:findmnt原完整输出中的某子卷挂载点.
-				[[ ${fullpre[$i]} =~ "$subvol" ]]&&volnum+=("$i")&&fullpost+=("${fullpre[$i]}")         # 使用数组支持单字卷多挂载点.
+				[[ ${fullpre[$i]} =~ "$subvol" ]]&&volnum+=("$i")&&fullpost+=("${fullpre[$i]}")         # 使用数组支持单子卷多挂载点.
 			done
 			for ((i=0;i<${#volnum[@]};i++));do
 				targetpost+=("${targetpre[${volnum[$i]}]}")
@@ -381,7 +382,7 @@ function cd(){ # 更好的cd
 			if ! ([[ "$number" =~ ^[0-9]+$ ]]||[ -z $number ]) ;then echo "Please enter a number.">&2;return 1;fi
 			if ! [[ -n ${targetpost[$number]} ]];then echo "Please enter a valid number.">&2;return 1;fi
 		fi
-		mountpoint="'${targetpost[$number]}'"
+		mountpoint="${targetpost[$number]}"
 		echo "Will cd to found mountpoint: \e[1;32m$mountpoint\e[m"
 		builtin cd "$mountpoint"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo $PWD >> $CD_HISTFILE
 		cd_deldups "$CD_HISTFILE"
@@ -413,7 +414,7 @@ function cd(){ # 更好的cd
 	bpath="$(echo -ne "${bcd_remaining[@]}"|$SYSROOT/usr/bin/sed s/\'//g)"
 	[[ "$bpath" =~ bpath.* ]]&&bpath=$($SYSROOT/usr/bin/grep "^$bpath----bydpath-binding-to----" "$PATHS_SAVE_FILE" | $SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $2}')||bpath=""
 	if [ -z "$bpath" ];then
-		eval builtin cd $bcd_builtin_opt ${bcd_remaining[@]}&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
+		eval builtin cd $bcd_builtin_opt "${bcd_remaining[@]}"&&echo $OLDPWD >> $RAMFS_DIR/"cdstack_$$" &&echo "$PWD" >> $CD_HISTFILE
 		cd_deldups "$CD_HISTFILE"
 		[ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
 		return 0
@@ -436,8 +437,7 @@ function uncd(){ # cd的撤回系统
 }
 function loop(){ # bash自动循环执行命令
 	local bloop_OPTS
-	bloop_OPTS=$($SYSROOT/usr/bin/getopt -o ut: --long help -n "loop" -- "$@")
-	if [ $? != 0 ];then echo "Please check if you gave invalid options." >&2;return 1;fi
+	if ! bloop_OPTS="$($SYSROOT/usr/bin/getopt -o ut: --long help -n "loop" -- "$@")";then echo "Please check if you gave invalid options." >&2;return 1;fi
 	local bloop_dont_exit_when_fail=0
 	local bloop_enable_times=0
 	local bloop_times=0
@@ -450,12 +450,12 @@ function loop(){ # bash自动循环执行命令
 			-t ) bloop_enable_times=1;shift 2;;
 			--help ) bloop_help=1;shift;;
 			-- ) end_opt=1;;
-			* ) [ $end_opt -ne 1 ]&&bloop_times=$(echo -n $bloop_opt|$SYSROOT/usr/bin/tr -d "'")||bloop_remaining+=($bloop_opt);;
+			* ) [ "$end_opt" -ne 1 ]&&bloop_times=${bloop_opt//\'/}||bloop_remaining+=("$bloop_opt");;
 		esac
 	done
-	[ $bloop_help -eq 1 ]&&(echo -ne "Usage: loop [-u] [-t <times>] [command]\n\n	This function is used to execute a bash command for many times\n	Options:\n		-u don't stop when command returned a non-zero value\n		-t <times> execute <command> for <times> times\n	<times> must be a integer.\n\nProvided by bydbash.\n")&&return 0
-	[ -z "$(echo ${bloop_remaining[@]})" ]&&return 0
-	local bloop_cmd="${bloop_remaining[@]//\'/}"
+	[ $bloop_help -eq 1 ]&&echo -ne "Usage: loop [-u] [-t <times>] [command]\n\n	This function is used to execute a bash command for many times\n	Options:\n		-u don't stop when command returned a non-zero value\n		-t <times> execute <command> for <times> times\n	<times> must be a integer.\n\nProvided by bydbash.\n"&&return 0
+	[ -z "${bloop_remaining[*]}" ]&&return 0
+	local bloop_cmd="${bloop_remaining[*]//\'/}"
 	if [ $bloop_dont_exit_when_fail -eq 1 ];then
 		if [ $bloop_enable_times -eq 0 ];then
 			for((;;)){ eval "$bloop_cmd"; }
@@ -488,6 +488,56 @@ function loop(){ # bash自动循环执行命令
 		return $returning
 	fi
 }
+smart_pwd(){
+	[ "$PWD" = "$bpfold_oldpwd" ]||smart_pwd="$(smart_pwd_get)"
+	bpfold_oldpwd="$PWD"
+}
+smart_pwd_get(){
+	local ifs="${IFS}"
+	local bpfold_in="${PWD}"
+	local colorhome="\e[1;35m~\e[0;32m"
+	IFS='/'
+	if [ "${bpfold_in}" != "/" ]&&[ "${bpfold_in}" != "${HOME}" ]; then
+		local bpfold_colorout="${bpfold_in/#~/${colorhome}}"
+		unset colorhome
+		bpfold_in="${bpfold_in/#~/\~}"
+		IFS='/' elements=($bpfold_colorout) #分片
+		IFS='/' ckments=($bpfold_in)
+		local len=${#elements[@]}
+		len=$((len-1))
+		for ((i=2; i<len; i++));do 
+			local elem="${elements[${i}]}"
+			[[ -n "$elem" ]]||continue
+			local elemcolor="\e[1;34m"
+			local ckmenti="${ckments[*]:0:((i+1))}"
+			[ -L "${ckmenti/\~/~}" ]&&elemcolor="\e[1;36m"
+			[ -a "${ckmenti/\~/~}" ]||elemcolor="\e[1;31m"
+			[[ "${elem:0:1}" == "." ]]&&elements[i]="${elemcolor}${elem:0:2}\e[0;32m"||elements[i]="${elemcolor}${elem:0:1}\e[0;32m" 
+			unset elemcolor elem
+		done
+		len=$((len))
+		local elem="${elements[len]}"
+		local elemcolor="\e[1;34m"
+		[ -L "${PWD}" ]&&elemcolor="\e[1;36m"
+		elements[len]="${elemcolor}${elem}\e[0;32m"
+		elemcolor="\e[1;34m"
+		local ckment1="${ckments[*]:0:2}"
+		[ -L "${ckment1/\~/~}" ]&&elemcolor="\e[1;36m"
+		[ -a "${ckment1/\~/~}" ]||elemcolor="\e[1;31m"
+		elements[1]="${elemcolor}${elements[1]}\e[0;32m"
+		unset ckment2
+		IFS='/' bpfold_colorout="${elements[*]}"
+	else
+		case "${bpfold_in}" in
+			/) local bpfold_colorout=/ ;;
+			"${HOME}") local bpfold_colorout="${colorhome}" ;;
+		esac
+	fi
+	IFS="${ifs}"
+	unset ifs
+	echo -e "\e[0;31m${bpfold_colorout}\e[m"
+	unset bpfold_colorout
+}
 pre_exec(){ # 命令执行之前由trap触发的函数
 	[ -z $preexec  ]&&[ "$BASH_COMMAND" != "post_exec" ]&&[ $in_init == 0 ]&&bashcommand="$BASH_COMMAND"
 	preexec=1
@@ -500,8 +550,9 @@ post_exec(){ # 命令执行之后由PROMPT_COMMAND触发的函数
 	if [ $in_init == 0 ];then
 		timing_post
 	fi
-	time1=$($SYSROOT/usr/bin/date +%T|$SYSROOT/usr/bin/awk -F":" {'print $1":"$2'})
-	time2=$($SYSROOT/usr/bin/date +%T|$SYSROOT/usr/bin/awk -F":" {'print $3'})
+	time1=$($SYSROOT/usr/bin/date +%T|$SYSROOT/usr/bin/awk -F":" '{print $1":"$2}')
+	time2=$($SYSROOT/usr/bin/date +%T|$SYSROOT/usr/bin/awk -F":" '{print $3}')
+	smart_pwd
 	PATH="$(pwd):$SourcePATH"
 	unset preexec
 	[ -z $set_title ]&&echo -n "\e]0;Interactive bash [$(whoami)@$HOSTNAME]\007"
@@ -560,7 +611,7 @@ _comp_bydbash_lspath(){
 _comp_bydbash_bydpath() {    
 	local waiting_to_complete
 	waiting_to_complete=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
-	local cur prev opts
+	local cur prev 
 	COMPREPLY=()
 	cur="${COMP_WORDS[COMP_CWORD]}"
 	_comp_command
@@ -570,14 +621,17 @@ _comp_bydbash_bydpath() {
 function _comp_bydbash_cd(){
 	local bpathcomp
 	bpathcomp=$(lspath >/dev/null 2>&1 &&lspath|$SYSROOT/usr/bin/awk -F'----bydpath-binding-to----' '{print $1}')
-	local cur prev opts
+	[ $? != 0 ]&&local bpathfucked=1
+	local cur prev
 	cur="${COMP_WORDS[COMP_CWORD]}"
 	_get_comp_words_by_ref cur prev words cword
 	if $SYSROOT/usr/bin/getopt -o m -- "$prev" >/dev/null 2>&1 && $SYSROOT/usr/bin/getopt -o m -- "$prev" 2>/dev/null | $SYSROOT/usr/bin/grep -- -m 2>/dev/null >&2;then
 		local DEV_MPOINT
 		DEV_MPOINT=$($SYSROOT/usr/bin/findmnt -rno TARGET,SOURCE)
-		COMPREPLY=( $(compgen -W "$DEV_MPOINT" -- $cur) )
-		return 0
+		for line in $(compgen -W "$DEV_MPOINT" -- "$cur");do
+			COMPREPLY+=("$line")
+		done
+		#return 0
 	else
 	if $SYSROOT/usr/bin/getopt -o h -- "$prev"  >/dev/null 2>&1  && $SYSROOT/usr/bin/getopt -o h -- "$prev" 2>/dev/null| $SYSROOT/usr/bin/grep -- -h 2>/dev/null >&2;then
 		local do_histcomp=set
@@ -587,7 +641,6 @@ function _comp_bydbash_cd(){
 		compopt +o dirnames 
 		compopt -o plusdirs
 		compopt +o noquote
-		local histcomp
 		local ifs=$IFS
 		local i=0
 		IFS=$'\n'
@@ -599,28 +652,28 @@ function _comp_bydbash_cd(){
 		unset do_histcomp
 	else
 		_comp_cmd_cd
-		compopt -o filenames
-		compopt +o dirnames
-		compopt -o plusdirs
-		compopt +o noquote
-		local new_completions=()
-		local item
-		for item in "${COMPREPLY[@]}"; do
-			if [[ $item == *['#@ *?[];|&$\']* ]]; then
-				item="${item//\'/\'\\\'\'}"
-			fi
-			new_completions+=("$item")
-		done
-		COMPREPLY=("${new_completions[*]}")
+		#compopt -o filenames
+		#compopt +o dirnames
+		#compopt -o plusdirs
+		#compopt +o noquote
+		#local new_completions=()
+		#local item
+		#for item in "${COMPREPLY[@]}"; do
+		#	if [[ $item == *['#@ *?[];|&$\']* ]]; then
+		#		item="${item//\'/\'\\\'\' }"##' -> '\''
+		#	fi
+		#	new_completions+=("$item")
+		#done
+		#COMPREPLY=("${new_completions[*]}")
 	fi
-	COMPREPLY+=($(compgen -W "$bpathcomp" -- $cur))
-	COMPREPLY+=($(compgen -f -d -- ${cur%"bpath"}bpath))
+	local bpathcomprslt
+	bpathcomprslt="$(compgen -W "$bpathcomp" -- "$cur")";:
+	[ "$bpathfucked" == "1" ]||COMPREPLY+=("$bpathcomprslt")
+	[ "$bpathfucked" == "1" ]||COMPREPLY+=("$(compgen -f -d -- "${cur%"bpath"}"bpath)")
 	fi
 	return 0
 }
 ## 补全函数结束
-complete -F _comp_command sudo
-complete -F _comp_command _
 complete -o default -o nospace -F _comp_bydbash_cd cd
 complete -E -F _comp_complete_longopt
 complete -o default -o nospace -F _comp_bydbash_bydpath byd
@@ -628,7 +681,7 @@ complete -o default -o nospace -F _comp_bydbash_lspath rmpath
 complete -o default -o nospace -F _comp_complete_longopt savepath
 # 补全部分结束
 # 命令提示符部分
-PS1='\[\e[m\]┌─\[\e[1;31m\][\[\e[m\]$0-$$ $(echo -n "$time1\[\e[25m\]:\[\e[m\]$time2" $([ $UID = 0 ]&&echo -n \[\e[4m\]\[\e[5m\]\[\e[1\;31m\]$(whoami)\[\e[m\]||echo \[\e[1\;34m\]$(whoami)))\[\e[1;31m\]@\[\e[34m\]\h \[\e[33m\]\w\[\e[31m\]]\[\e[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\e[1\;32m\]||echo \[\e[1\;31m\]$ret)\$>>_\[\e[m\] '
+PS1='\[\e[m\]┌─\[\e[1;31m\][\[\e[m\]$0-$$ $(echo -n "$time1\[\e[25m\]:\[\e[m\]$time2" $([ $UID = 0 ]&&echo -n \[\e[4m\]\[\e[5m\]\[\e[1\;31m\]$(whoami)\[\e[m\]||echo \[\e[1\;34m\]$(whoami)))\[\e[1;31m\]@\[\e[34m\]\h $smart_pwd\[\e[1;31m\]]\[\e[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\e[1\;32m\]||echo \[\e[1\;31m\]$ret)\$>>_\[\e[m\] '
 PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>$(echo -n \[\033[m\])'
 PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > $(echo -n \[\033[m\])'
 PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> $(echo -n \[\033[m\])'
@@ -644,14 +697,14 @@ bind -x '"\C-x\C-t": tmuxmgr'
 # bind部分结束
 # # 后部命令部分
 history -a # 命令计时器
-pre_histsize=$($SYSROOT/usr/bin/stat -c%s $HISTFILE)
-post_histsize=$pre_histsize ##
+#pre_histsize=$($SYSROOT/usr/bin/stat -c%s $HISTFILE)
+#post_histsize=$pre_histsize ##
 # [ -f $HOME/.bashrc ]&&source $HOME/.bashrc||true
 PROMPT_COMMAND=post_exec
-if [ -z $SUDO_USER ]&&[ $$ -ne 1 ];then
-	eval $SYSTEM_FETCH
+if [ -z "$SUDO_USER" ]&&[ "$$" -ne 1 ];then
+	eval "$SYSTEM_FETCH"
 fi
-trap "[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$" EXIT
+trap '[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$' EXIT
 trap 'pre_exec' DEBUG
 # 后部命令部分结束
 
