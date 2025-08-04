@@ -558,7 +558,7 @@ post_exec(){ # 命令执行之后由PROMPT_COMMAND触发的函数
 	PATH="$(pwd):$SourcePATH"
 	unset preexec
 	[ -z $set_title ]&&echo -n "\e]0;Interactive bash [$(whoami)@$HOSTNAME]\007"
-PS1="\[\e[m\]┌─\[\e[1;31m\][\[\e[m\]$0-$$ $(echo -n "$time1\[\e[25m\]:\[\e[m\]$time2" $([ $UID = 0 ]&&echo -ne "\[\e[4m\]\[\e[5m\]\[\e[1;31m\]$(whoami)\[\e[m\]"||echo "\[\e[1;34m\]$(whoami)"))\[\e[1;31m\]@\[\e[34m\]\h $smart_pwd\[\e[1;31m\]]\[\e[m\]$(ps1addons)\n└─$([ $ret = 0 ]&&echo -ne "\[\e[1;32m\]"||echo -en "\[\e[1;31m\]$ret")\$>>_\[\e[m\] "
+PS1="\[\e[m\]┌─\[\e[1;31m\][\[\e[m\]$0-$$ $(echo -n "$time1\[\e[25m\]:\[\e[m\]$time2" $([ $UID = 0 ]&&echo -ne "\[\e[4m\]\[\e[5m\]\[\e[1;31m\]$(whoami)\[\e[m\]"||echo "\[\e[1;34m\]$(whoami)"))\[\e[1;31m\]@\[\e[34m\]\h $smart_pwd\[\e[1;31m\]]\[\e[m\]\n└─$([ $ret = 0 ]&&echo -ne "\[\e[1;32m\]"||echo -en "\[\e[1;31m\]$ret")\$>>_\[\e[m\] "
 PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>$(echo -n \[\033[m\])'
 PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > $(echo -n \[\033[m\])'
 PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> $(echo -n \[\033[m\])'
