@@ -389,7 +389,7 @@ function cd(){ # 更好的cd
 		[ -f $RAMFS_DIR/"cdstack_$$" ]&&cd_deldups $RAMFS_DIR/"cdstack_$$"
 		return
 	fi
-	if [ $bcd_history_mode -eq 0 -a $bcd_builtin_cd -eq 0 ];then
+	if [ $bcd_history_mode -eq 0 ]&&[ $bcd_builtin_cd -eq 0 ];then
 		if [ $bcd_list -eq 1 ];then
 			[ -s $RAMFS_DIR/"cdstack_$$" ]&&$SYSROOT/usr/bin/cat $RAMFS_DIR/"cdstack_$$"||echo "cd stack is empty!";return 1
 		elif [ $bcd_search -eq 1 ];then
@@ -515,18 +515,20 @@ smart_pwd_get(){
 			[[ "${elem:0:1}" == "." ]]&&elements[i]="${elemcolor}${elem:0:2}\e[0;32m"||elements[i]="${elemcolor}${elem:0:1}\e[0;32m" 
 			unset elemcolor elem
 		done
-		len=$((len))
-		local elem="${elements[len]}"
+		if [ 1 -lt $len ];then
 		local elemcolor="\e[1;34m"
-		[ -L "${PWD}" ]&&elemcolor="\e[1;36m"
-		elements[len]="${elemcolor}${elem}\e[0;32m"
-		elemcolor="\e[1;34m"
 		local ckment1="${ckments[*]:0:2}"
 		[ -L "${ckment1/\~/~}" ]&&elemcolor="\e[1;36m"
 		[ -a "${ckment1/\~/~}" ]||elemcolor="\e[1;31m"
-		elements[1]="${elemcolor}${elements[1]}\e[0;32m"
-		unset ckment2
-		IFS='/' bpfold_colorout="${elements[*]}"
+		elements[1]="${elemcolor}${elements[1]:0:5}$([ ${#ckments[1]} -gt 5 ]&&echo -ne '.')\e[0;32m"
+		unset ckment1
+		fi
+		len=$((len))
+		elemcolor="\e[1;34m"
+		local elem="${elements[len]}"
+		[ -L "${PWD}" ]&&elemcolor="\e[1;36m"
+		elements[len]="${elemcolor}${elem}\e[0;32m"
+				IFS='/' bpfold_colorout="${elements[*]}"
 	else
 		case "${bpfold_in}" in
 			/) local bpfold_colorout=/ ;;
@@ -556,6 +558,10 @@ post_exec(){ # 命令执行之后由PROMPT_COMMAND触发的函数
 	PATH="$(pwd):$SourcePATH"
 	unset preexec
 	[ -z $set_title ]&&echo -n "\e]0;Interactive bash [$(whoami)@$HOSTNAME]\007"
+PS1="\[\e[m\]┌─\[\e[1;31m\][\[\e[m\]$0-$$ $(echo -n "$time1\[\e[25m\]:\[\e[m\]$time2" $([ $UID = 0 ]&&echo -ne "\[\e[4m\]\[\e[5m\]\[\e[1;31m\]$(whoami)\[\e[m\]"||echo "\[\e[1;34m\]$(whoami)"))\[\e[1;31m\]@\[\e[34m\]\h $smart_pwd\[\e[1;31m\]]\[\e[m\]$(ps1addons)\n└─$([ $ret = 0 ]&&echo -ne "\[\e[1;32m\]"||echo -en "\[\e[1;31m\]$ret")\$>>_\[\e[m\] "
+PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>$(echo -n \[\033[m\])'
+PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > $(echo -n \[\033[m\])'
+PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> $(echo -n \[\033[m\])'
 	in_init=0
 }
 # 函数部分结束
@@ -652,19 +658,6 @@ function _comp_bydbash_cd(){
 		unset do_histcomp
 	else
 		_comp_cmd_cd
-		#compopt -o filenames
-		#compopt +o dirnames
-		#compopt -o plusdirs
-		#compopt +o noquote
-		#local new_completions=()
-		#local item
-		#for item in "${COMPREPLY[@]}"; do
-		#	if [[ $item == *['#@ *?[];|&$\']* ]]; then
-		#		item="${item//\'/\'\\\'\' }"##' -> '\''
-		#	fi
-		#	new_completions+=("$item")
-		#done
-		#COMPREPLY=("${new_completions[*]}")
 	fi
 	local bpathcomprslt
 	bpathcomprslt="$(compgen -W "$bpathcomp" -- "$cur")";:
@@ -681,10 +674,7 @@ complete -o default -o nospace -F _comp_bydbash_lspath rmpath
 complete -o default -o nospace -F _comp_complete_longopt savepath
 # 补全部分结束
 # 命令提示符部分
-PS1='\[\e[m\]┌─\[\e[1;31m\][\[\e[m\]$0-$$ $(echo -n "$time1\[\e[25m\]:\[\e[m\]$time2" $([ $UID = 0 ]&&echo -n \[\e[4m\]\[\e[5m\]\[\e[1\;31m\]$(whoami)\[\e[m\]||echo \[\e[1\;34m\]$(whoami)))\[\e[1;31m\]@\[\e[34m\]\h $smart_pwd\[\e[1;31m\]]\[\e[m\]$(git_current_branch yes)\n└─$([ $ret = 0 ]&&echo \[\e[1\;32m\]||echo \[\e[1\;31m\]$ret)\$>>_\[\e[m\] '
-PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>$(echo -n \[\033[m\])'
-PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > $(echo -n \[\033[m\])'
-PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> $(echo -n \[\033[m\])'
+#-------被移动至post_exec
 # 命令提示符部分结束
 # bind部分
 bind 'set show-all-if-ambiguous on'
@@ -697,8 +687,6 @@ bind -x '"\C-x\C-t": tmuxmgr'
 # bind部分结束
 # # 后部命令部分
 history -a # 命令计时器
-#pre_histsize=$($SYSROOT/usr/bin/stat -c%s $HISTFILE)
-#post_histsize=$pre_histsize ##
 # [ -f $HOME/.bashrc ]&&source $HOME/.bashrc||true
 PROMPT_COMMAND=post_exec
 if [ -z "$SUDO_USER" ]&&[ "$$" -ne 1 ];then
