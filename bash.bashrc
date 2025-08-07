@@ -113,13 +113,13 @@ timing(){ # 命令计时器
 }
 timing_post(){ # 命令计时器
 	local elapsed_time_ns=$((end_time - start_time))
-	#local command_to_execute=$(history 1 | $SYSROOT/usr/bin/sed 's/^ *[0-9]\+ *//')
 	local elapsed_time_sec=$(echo "scale=2; $elapsed_time_ns / 1000000000" | $SYSROOT/usr/bin/bc)
 	if [ $ret == 0 ];then
 		echo -e "\e[1;32m"
 	else
 		echo -e "\e[1;31m"
 	fi
+	echo -ne "\r\e[k"
 	echo -En "$bashcommand: ${elapsed_time_sec} s"
 	echo -e "\e[m"
 	unset start_time
@@ -497,33 +497,32 @@ smart_pwd_get(){
 	local bpfold_in="${PWD}"
 	local colorhome="\e[1;35m~\e[0;32m"
 	IFS='/'
-	if [ "${bpfold_in}" != "/" ]&&[ "${bpfold_in}" != "${HOME}" ]; then
-		local bpfold_colorout="${bpfold_in/#${HOME}/${colorhome}}"
+	if [ "${PWD}" != "/" ]&&[ "${PWD}" != "${HOME}" ]; then
+		local bpfold_colorout="${PWD/#${HOME}/${colorhome}}"
 		unset colorhome
-		bpfold_in="${bpfold_in/#${HOME}/\~}"
+		bpfold_in="${PWD/#${HOME}/\~}"
 		IFS='/' elements=($bpfold_colorout) #分片
-		IFS='/' ckments=($bpfold_in)
+		IFS='/' ckments=(${bpfold_in})
 		local len=${#elements[@]}
 		len=$((len-1))
+		local elemcolor
 		for ((i=2; i<len; i++));do 
-			local elem="${elements[${i}]}"
-			[[ -n "$elem" ]]||continue
-			local elemcolor="\e[1;34m"
+			local elem="${elements[i]}"
+			[ -n "$elem" ]||continue
+			elemcolor="\e[1;34m"
 			local ckmenti="${ckments[*]:0:((i+1))}"
 			[ -L "${ckmenti/\~/~}" ]&&elemcolor="\e[1;36m"
 			[ -a "${ckmenti/\~/~}" ]||elemcolor="\e[1;31m"
-			[[ "${elem:0:1}" == "." ]]&&elements[i]="${elemcolor}${elem:0:2}\e[0;32m"||elements[i]="${elemcolor}${elem:0:1}\e[0;32m" 
-			unset elemcolor elem
+			[ "${elem:0:1}" == "." ]&&elements[i]="${elemcolor}${elem:0:2}\e[0;32m"||elements[i]="${elemcolor}${elem:0:1}\e[0;32m" 
 		done
 		if [ 1 -lt $len ];then
-		local elemcolor="\e[1;34m"
+		elemcolor="\e[1;34m"
 		local ckment1="${ckments[*]:0:2}"
 		[ -L "${ckment1/\~/~}" ]&&elemcolor="\e[1;36m"
 		[ -a "${ckment1/\~/~}" ]||elemcolor="\e[1;31m"
 		elements[1]="${elemcolor}${elements[1]:0:5}$([ ${#ckments[1]} -gt 5 ]&&echo -ne '.')\e[0;32m"
 		unset ckment1
 		fi
-		len=$((len))
 		elemcolor="\e[1;34m"
 		local elem="${elements[len]}"
 		[ -L "${PWD}" ]&&elemcolor="\e[1;36m"
@@ -541,6 +540,7 @@ smart_pwd_get(){
 	unset bpfold_colorout
 }
 pre_exec(){ # 命令执行之前由trap触发的函数
+	[ $in_init -eq 1 ]&&return 0
 	[ -z $preexec  ]&&[ "$BASH_COMMAND" != "post_exec" ]&&[ $in_init == 0 ]&&bashcommand="$BASH_COMMAND"
 	preexec=1
 	[ "$in_timing"x == yesx ]||timing pre
@@ -557,8 +557,8 @@ post_exec(){ # 命令执行之后由PROMPT_COMMAND触发的函数
 	smart_pwd
 	PATH="$(pwd):$SourcePATH"
 	unset preexec
-	[ -z $set_title ]&&echo -n "\e]0;Interactive bash [$(whoami)@$HOSTNAME]\007"
-PS1="\[\e[m\]┌─\[\e[1;31m\][\[\e[m\]$0-$$ $(echo -n "$time1\[\e[25m\]:\[\e[m\]$time2" $([ $UID = 0 ]&&echo -ne "\[\e[4m\]\[\e[5m\]\[\e[1;31m\]$(whoami)\[\e[m\]"||echo "\[\e[1;34m\]$(whoami)"))\[\e[1;31m\]@\[\e[34m\]\h $smart_pwd\[\e[1;31m\]]\[\e[m\]\n└─$([ $ret = 0 ]&&echo -ne "\[\e[1;32m\]"||echo -en "\[\e[1;31m\]$ret")\$>>_\[\e[m\] "
+	[ -z $set_title ]&&echo -n "\e]0;*I bash-$$ [$(whoami)@$HOSTNAME]\007"
+PS1="\[\e[m\]┌─\[\e[1;31m\][\[\e[m\]$0-$$ $(echo -n "$time1\[\e[25m\]:\[\e[m\]$time2" $([ $UID = 0 ]&&echo -ne "\[\e[4m\]\[\e[5m\]\[\e[1;31m\]$(whoami)\[\e[m\]"||echo "\[\e[1;34m\]$(whoami)"))\[\e[1;31m\]@\[\e[34m\]\h $smart_pwd\[\e[1;31m\]]\[\e[m\]$(ps1addons)\n└─$([ $ret = 0 ]&&echo -ne "\[\e[1;32m\]"||echo -en "\[\e[1;31m\]$ret")\$>>_\[\e[m\] "
 PS2='$(echo -n \[\033[1\;33m\])[Line $LINENO]>$(echo -n \[\033[m\])'
 PS3='$(echo -n \[\033[1\;35m\])\[[$0]Select > $(echo -n \[\033[m\])'
 PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> $(echo -n \[\033[m\])'
@@ -568,6 +568,7 @@ PS4='$(echo -n \[\033[1\;35m\])\[[$0] Line $LINENO:> $(echo -n \[\033[m\])'
 # 别名部分
 if [ -x $SYSROOT/usr/bin/dircolors ]; then
 	test -r ~/.dircolors && eval "$($SYSROOT/usr/bin/dircolors -b ~/.dircolors)" || eval "$($SYSROOT/usr/bin/dircolors -b)"
+	test -r /etc/DIR_COLORS && eval "$($SYSROOT/usr/bin/dircolors -b /etc/DIR_COLORS)"
 	alias ls='ls --color=auto -v -p -CF'
 	alias dir='dir --color=auto'
 	alias vdir='vdir --color=auto'
@@ -586,8 +587,9 @@ alias ff='fastfetch'
 alias ip='command ip -color=auto'
 alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|$SYSROOT/usr/bin/tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
 if [ $UID -ne 0 ];then
-	alias sus='sudo -s'
-	alias _='sudo'
+	alias sus='sudo -s '
+	alias sudo='sudo '
+	alias _='sudo '
 fi
 if [ -f ~/.bash_aliases ]; then
 	. ~/.bash_aliases
@@ -688,11 +690,10 @@ bind -x '"\C-x\C-t": tmuxmgr'
 # # 后部命令部分
 history -a # 命令计时器
 # [ -f $HOME/.bashrc ]&&source $HOME/.bashrc||true
-PROMPT_COMMAND=post_exec
+PROMPT_COMMAND=("post_exec")
 if [ -z "$SUDO_USER" ]&&[ "$$" -ne 1 ];then
 	eval "$SYSTEM_FETCH"
 fi
 trap '[ -f $RAMFS_DIR/cdstack_$$ ]&&rm $RAMFS_DIR/cdstack_$$' EXIT
 trap 'pre_exec' DEBUG
 # 后部命令部分结束
-
